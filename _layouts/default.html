@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title }} | {{ site.title }}</title>
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="{{ '/assets/js/main.js' | relative_url }}" defer></script>
+    <!-- <script src="{{ '/assets/js/audio-player.js' | relative_url }}" defer></script> --> <!-- Удалите или закомментируйте, если не используется -->
+</head>
+<body>
+    {% include header.html %}
+    <main>
+        {{ content }}
+    </main>
+    {% include footer.html %}
+
+    <!-- ++ НАЧАЛО: Добавленные скрипты Auth0 ++ -->
+    <!-- 1. Подключаем Auth0 SPA SDK с CDN -->
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+    <!-- 2. Подключаем ВАШ скрипт для логики Auth0 -->
+    <script src="/assets/js/auth.js"></script> <!-- Убедитесь, что путь правильный -->
+    <!-- ++ КОНЕЦ: Добавленные скрипты Auth0 ++ -->
+
+</body>
+</html>

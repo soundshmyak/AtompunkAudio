@@ -1,0 +1,10 @@
+[build]
+  command = "bundle exec jekyll build" # Как собирать ваш сайт
+  publish = "_site"                   # Куда складывать готовый сайт
+  functions = "netlify/functions"     # Где лежат серверные функции
+
+# Эта часть необязательна, но делает адрес функции красивее
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

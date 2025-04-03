@@ -1,0 +1,90 @@
+<!-- START OF FILE header.html (ИЗМЕНЕННЫЙ) -->
+<header id="page-header">
+
+    <div id="page-media">
+        <div class="top-bar">
+            <nav class="main-nav">
+                <button class="popup-button nav-button" onclick="openFullscreenPopup()">
+                    <div class="hamburger-icon"></div>
+                    <span class="visually-hidden">Menu</span>
+                </button>
+            </nav>
+            <!-- Полноэкранный popup menu -->
+            <div id="fullscreen-popup" class="fullscreen-popup">
+                <div class="popup-content">
+                    <button class="popup-close-button close-button" onclick="closeFullscreenPopup()">×</button>
+                    <nav class="popup-nav">
+                        <ul>
+                            {% for item in site.navigation %}
+                            <li><a href="{{ item.url | relative_url }}" class="popup-nav-item"
+                                    data-page-url="{{ item.url | relative_url }}">{{ item.title }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- ++ НАЧАЛО: Новый блок управления Auth0 (Заменяет старую кнопку) ++ -->
+            <div class="auth-controls" style="margin-left: auto; display: flex; align-items: center;">
+                <!-- Этот div будет показывать имя и аватар пользователя -->
+                <div id="user-profile" style="display: none; margin-right: 10px;">
+                  <!-- Сюда JS вставит информацию о пользователе (аватар, имя) -->
+                  <!-- Стили для аватара можно добавить в CSS, см. Шаг 5 -->
+                </div>
+
+                <!-- Кнопка Входа/Регистрации (видна, если не вошел) -->
+                <!-- Используем классы button-base nav-button для схожего вида -->
+                <button id="login-btn" class="button-base nav-button" style="display: none;">Вход / Регистрация</button>
+
+                <!-- Кнопка Выхода (видна, если вошел) -->
+                <button id="logout-btn" class="button-base nav-button" style="display: none;">Выйти</button>
+            </div>
+            <!-- ++ КОНЕЦ: Новый блок управления Auth0 ++ -->
+
+        </div>
+        <div class="page-media-wrap">
+             <div id="page_media_container" class="page-media-wrapper">
+                 <div class="moda m-page-media m-media m-bordered m-cut-corner m-clipped m-shape m-masked page-video-container page-media-container">
+                     <div class="filter-overlay"></div>
+                     <div class="video-background">
+                         <video class="page-media" playsinline="playsinline" autoplay="autoplay" muted="muted" loop="loop">
+                             <source src="/assets/video/background.mp4" type="video/mp4">
+                             <img src="/assets/images/video-fallback.jpg" alt="Фоновое изображение">
+                             Ваш браузер не поддерживает видео.
+                         </video>
+                     </div>
+                 </div>
+             </div>
+             <div class="site-wrap" id="title-wrap" data-apply-textfit="false">
+                 <h1 id="page-title" class="page-title display-type-text text-fit">
+                     <a href="{{ "/" | relative_url }}">
+                         <span class="outer" data-max-font-size="50">
+                             <div class="site-title">
+                                 <img src="/assets/images/logo.png" alt="Atompunk Audio">
+                             </div>
+                         </span>
+                     </a>
+                 </h1>
+             </div>
+         </div>
+    </div>
+    <div class="bottom-marquee">
+        <div class="marquee-content">
+            >>>Здесь будет текст вашей нижней бегущей строки. Например, "© 2024 Atompunk Audio. Все права защищены. Подписывайтесь на нас в социальных сетях! "
+            >>>Здесь будет текст вашей нижней бегущей строки. Например, "© 2024 Atompunk Audio. Все права защищены. Подписывайтесь на нас в социальных сетях! "
+            >>>Здесь будет текст вашей нижней бегущей строки. Например, "© 2024 Atompunk Audio. Все права защищены. Подписывайтесь на нас в социальных сетях! "
+            >>>Здесь будет текст вашей нижней бегущей строки. Например, "© 2024 Atompunk Audio. Все права защищены. Подписывайтесь на нас в социальных сетях! "
+        </div>
+    </div>
+
+    <!-- Модальное окно авторизации УДАЛЕНО -->
+    <!-- <div id="auth-modal" class="modal" style="display: none;"> ... </div> -->
+
+    <!-- Скрипт для старой авторизации УДАЛЕН -->
+    <!-- <script> ... </script> -->
+
+    <!-- Подключение main.js было здесь - УДАЛЕНО (перенесено/оставлено в default.html) -->
+    <!-- <script src="assets/js/main.js"></script> -->
+
+ </header>
+<!-- END OF FILE header.html (ИЗМЕНЕННЫЙ) -->

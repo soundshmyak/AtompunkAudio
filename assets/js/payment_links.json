@@ -1,0 +1,20 @@
+{
+  "payment_options": [
+    {
+      "amount": 10,
+      "product_id": "Uz9ND" 
+    },
+    {
+      "amount": 20,
+      "product_id": "exT8n" 
+    },
+    {
+      "amount": 30,
+      "product_id": "uX903" 
+    },
+    {
+      "amount": "default",
+      "product_id": "default_payhip_product_id" 
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+title: "Atompunk Audio" # Замени на название своего сайта
+email: "your-email@example.com" # Замени на свой email
+description: >- # Напиши краткое описание своего сайта
+  Каталог бесплатных звуковых эффектов.
+baseurl: "" # Оставьте пустым, если сайт будет в корне домена
+url: "http://yourdomain.com" # Замени на домен своего сайта
+twitter_username: username # Замени на имя пользователя Twitter (необязательно)
+github_username:  username # Замени на имя пользователя GitHub (необязательно)
+
+# Настройки для пагинации (если планируется большое количество звуков)
+paginate: 10 # Количество звуков на странице
+paginate_path: "/sounds/page:num/"
+
+# Меню сайта
+navigation:
+  - title: Sound Effects
+    url: /sounds/
+  - title: About
+    url: /about/
+  - title: Contact
+    url: /contact/
+  - title: Pricing
+    url: /pricing/
+  - title: License
+    url: /license/
+
+# Коллекция для звуков
+collections:
+  sounds:
+    output: true
+    permalink: /sounds/:path/
+
+# Плагины Jekyll (убедитесь, что gem 'jekyll-paginate' добавлен в Gemfile)
+plugins:
+  - jekyll-paginate

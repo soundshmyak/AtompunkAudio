@@ -1,0 +1,3 @@
+<FilesMatch "\.(mp3)$">
+    Require all denied
+</FilesMatch>

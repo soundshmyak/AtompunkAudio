@@ -1,0 +1,547 @@
+---
+layout: default
+---
+
+<div class="sounds-page">
+  <div class="red-zone"></div>
+  <h1>RETRO FUTURE SOUND DESIGN by sound shmyak</h1>
+  <div class="last-update">Search sounds tags, type, keywords, etc.</div>
+  {% include search-bar.html %}
+  <div class="red-zone"></div>
+  <br>Last update: 24.01.25<br>
+  <div class="sound-list">
+    {% for sound in site.sounds %}
+    <div class="sound-item"
+         data-sound-title="{{ sound.title }}"
+         data-sound-tags="{{ sound.tags | join: ',' }}"
+         data-sound-path="{{ '/assets/audio/' | append: sound.path | remove: '_sounds/' | replace: '.md', '.mp3' | relative_url }}"
+         data-sound-hash="{{ sound.hash }}"
+		 data-sound-product="{{ sound.product }}"
+         data-sound-extracted-from="{{ sound.extracted_from }}"
+         data-sound-pak-name="{{ sound.pak_name }}"
+         data-sound-event-name="{{ sound.event_name }}"
+         data-is-purchasable="{% if sound.product %}true{% else %}false{% endif %}">
+      <div class="sound-preview">
+        <button
+          class="relative rounded-full p-2.5 text-zinc-400 transition bg-red bg-opacity-25 hover:bg-opacity-40 hover:text-white disabled:bg-cyan disabled:bg-opacity-5 disabled:text-zinc-600 button-base play-button"
+          title="Play the sound">
+          <img src="/assets/images/playing-animation.gif" alt="Playing Animation" class="playing-gif"
+            style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 70%;height: 70%;object-fit: contain;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="feather feather-volume-2 play-icon">
+            <polygon points="11 5 6 9 2 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="feather feather-stop-circle pause-icon" style="display: none;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <rect x="9" y="9" width="6" height="6"></rect>
+          </svg>
+          <span class="sr-only">Play the sound</span>
+        </button>
+      </div>
+      <div class="sound-info">
+        <h3 class="sound-title-link">
+          {{ sound.title }}
+        </h3>
+        {% if sound.tags %}
+        <p class="sound-tags">
+          {% for tag in sound.tags %}
+          <span>{{ tag }}</span>
+          {% endfor %}
+        </p>
+        {% endif %}
+      </div>
+      <audio class="sound-audio" controls preload="none" style="display: none;">
+        <source
+          src="{{ '/assets/audio/' | append: sound.path | remove: '_sounds/' | replace: '.md', '.mp3' | relative_url }}"
+          type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if paginator.total_pages > 1 %}
+  <div class="pagination">
+    {% if paginator.previous_page %}
+    <a href="{{ paginator.previous_page_path | relative_url }}">« Назад</a>
+    {% endif %}
+
+    {% for page_num in (1..paginator.total_pages) %}
+    {% if page_num == paginator.page %}
+    <span class="current">{{ page_num }}</span>
+    {% else %}
+    <a href="{{ paginator.page_path | replace: ':num', page_num | relative_url }}">{{ page_num }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if paginator.next_page %}
+    <a href="{{ paginator.next_page_path | relative_url }}">Вперед »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div id="sound-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-button">× CLOSE</span>
+      <h2 id="modal-title">Sound Effect</h2>
+      <audio id="modal-audio" controlsList="nodownload" controls preload="none"></audio>
+      <div class="modal-details">
+        <p>AUDIO: <span id="modal-hash"></span> <a href="/license">
+            <button class="copy-button">license</button></a></p>
+        <p>ТИП: <span id="modal-extracted-from"></span></p>
+        <p>FULL NAME: <span id="modal-pak-name"></span>
+             <button class="buy-now-button-modal add-to-cart-button" data-sound-id="" data-is-purchasable="false">Buy Now</button></p>
+      </div>
+      <div class="modal-events">
+        <p>LIBRARY: <span id="modal-event-name"></span> <a href="/library">
+            <button class="copy-button">view</button></a></p>
+      </div>
+      <div class="modal-tags" id="modal-tags">
+        <p>TAGS (3): </p>
+      </div>
+    </div>
+  </div>
+
+    <!-- Корзина -->
+    <div id="cart-overlay" class="overlay" style="display: none;">
+      <div id="cart-modal" class="cart-modal">
+          <span class="close-button cart-close-button">× CLOSE</span>
+          <h2>Your Cart</h2>
+          <ul id="cart-items">
+               <!-- Элементы корзины будут добавляться здесь -->
+          </ul>
+         <div class="cart-total">
+            Total: <span id="cart-total-amount">0</span>$
+        </div>
+        <button id="checkout-button" class="checkout-button button-base">Checkout</button>
+      </div>
+   </div>
+          <div id="cart-notification" class="cart-notification">
+		  <img src="/assets/images/cart.svg" alt="Корзина" class="cart-icon">
+            <span id="cart-count-circle" class="cart-count-circle">
+                <span id="cart-count">0</span>
+            </span>
+        </div>
+</div>
+
+<script src="{{ '/assets/js/search.js' | relative_url }}" defer></script>
+<script type="text/javascript" src="https://payhip.com/payhip.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('search-input');
+    const categoryFilter = document.getElementById('category-filter');
+    const soundItems = document.querySelectorAll('.sound-item');
+    const soundList = document.querySelector('.sound-list');
+    const soundTitles = document.querySelectorAll('.sound-title-link');
+    const playButtons = document.querySelectorAll('.play-button');
+    const modal = document.getElementById('sound-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalAudio = document.getElementById('modal-audio');
+    const closeButton = modal.querySelector('.close-button');
+    const modalHash = document.getElementById('modal-hash');
+    const modalExtractedFrom = document.getElementById('modal-extracted-from');
+    const modalPakName = document.getElementById('modal-pak-name');
+    const modalEventName = document.getElementById('modal-event-name');
+    const modalTagsContainer = document.getElementById('modal-tags');
+    let noResultsMessage = null;
+    let currentlyPlayingAudio = null;
+	  // Cart elements
+      const cartOverlay = document.getElementById('cart-overlay');
+      const cartModal = document.getElementById('cart-modal');
+      const cartItemsList = document.getElementById('cart-items');
+      const cartCountElement = document.getElementById('cart-count');
+      const cartTotalAmount = document.getElementById('cart-total-amount');
+      const addToCartButtons = document.querySelectorAll('.add-to-cart-button');
+      const cartCloseButton = cartModal.querySelector('.cart-close-button');
+	  const cartNotification = document.getElementById('cart-notification');
+       const checkoutButton = document.getElementById('checkout-button');
+
+        let cart = loadCartFromLocalStorage(); // Загрузка корзины из localStorage при загрузке страницы
+
+    function stopCurrentlyPlaying() {
+      if (currentlyPlayingAudio) {
+        const associatedButton = document.querySelector(`.play-button[data-audio-id="${currentlyPlayingAudio.dataset.audioId}"]`);
+        if (associatedButton) {
+          associatedButton.classList.remove('playing');
+        }
+        currentlyPlayingAudio.pause();
+        currentlyPlayingAudio.currentTime = 0;
+        currentlyPlayingAudio = null;
+      }
+    }
+
+
+     function filterSounds() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const selectedCategory = categoryFilter.value;
+      let foundSounds = false;
+
+       soundItems.forEach(item => {
+          const title = item.dataset.soundTitle.toLowerCase();
+          const tags = item.dataset.soundTags.toLowerCase();
+          const extractedFrom = item.dataset.soundExtractedFrom.toLowerCase();
+          const pakName = item.dataset.soundPakName.toLowerCase();
+          const eventName = item.dataset.soundEventName.toLowerCase();
+
+          let isCategoryMatch = false;
+
+          if (selectedCategory === 'all' || extractedFrom === selectedCategory) {
+            isCategoryMatch = true;
+          }
+
+          const isSearchMatch =
+              title.includes(searchTerm) ||
+              tags.includes(searchTerm) ||
+              extractedFrom.includes(searchTerm) ||
+              pakName.includes(searchTerm) ||
+              eventName.includes(searchTerm);
+
+
+          if (isCategoryMatch && isSearchMatch) {
+            item.style.display = 'flex';
+            foundSounds = true;
+          } else {
+             item.style.display = 'none';
+          }
+      });
+
+      if (noResultsMessage) {
+          noResultsMessage.remove();
+          noResultsMessage = null;
+      }
+
+      if (!foundSounds && searchTerm.trim() !== '') {
+          noResultsMessage = document.createElement('p');
+          noResultsMessage.textContent = '! No items matching the filter were found. ';
+          noResultsMessage.classList.add('no-results-message');
+          soundList.appendChild(noResultsMessage);
+        }
+    }
+
+
+    searchInput.addEventListener('input', filterSounds);
+    categoryFilter.addEventListener('change', filterSounds);
+
+    function extractAllCategories() {
+      const categoriesSet = new Set();
+      soundItems.forEach(item => {
+        categoriesSet.add(item.dataset.soundExtractedFrom.trim().toLowerCase());
+      });
+      const uniqueCategories = Array.from(categoriesSet);
+      categoryFilter.innerHTML = '<option value="all">any</option>';
+      uniqueCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+      });
+    }
+
+    extractAllCategories();
+    filterSounds();
+
+    soundTitles.forEach(titleElement => {
+      titleElement.addEventListener('click', function () {
+        stopCurrentlyPlaying();
+
+        const soundItem = this.closest('.sound-item');
+        const title = soundItem.dataset.soundTitle;
+        const tags = soundItem.dataset.soundTags.split(',');
+        const audioPath = soundItem.dataset.soundPath;
+        const hash = soundItem.dataset.soundHash;
+        const extractedFrom = soundItem.dataset.soundExtractedFrom;
+        const pakName = soundItem.dataset.soundPakName;
+        const eventName = soundItem.dataset.soundEventName;
+       const isPurchasable = soundItem.dataset.isPurchasable === "true";
+
+
+        modalTitle.textContent = title;
+        modalAudio.src = audioPath;
+        modalHash.textContent = hash;
+        modalExtractedFrom.textContent = extractedFrom;
+        modalPakName.textContent = pakName;
+        modalEventName.textContent = eventName;
+
+        modalTagsContainer.innerHTML = '<p>TAGS:</p>';
+        tags.forEach(tag => {
+          const span = document.createElement('span');
+          span.textContent = tag.trim();
+          modalTagsContainer.appendChild(span);
+        });
+
+        // Обновляем data-sound-id и data-is-purchasable на кнопке
+         const buyNowButtonModal = modal.querySelector('.add-to-cart-button');
+        buyNowButtonModal.dataset.soundId = pakName;
+         buyNowButtonModal.dataset.isPurchasable = isPurchasable;
+
+
+       // Обновляем кнопку на основе состояния корзины
+       updateButtonState(buyNowButtonModal);
+        modal.style.display = 'block';
+        disableScroll();
+      });
+    });
+
+      // Функции для работы с корзиной
+      function updateCartDisplay() {
+        cartItemsList.innerHTML = '';
+        let total = 0;
+		let cartItemCount = 0;
+
+       for (const soundId in cart) {
+          if (cart.hasOwnProperty(soundId)) {
+            const item = cart[soundId];
+               const li = document.createElement('li');
+               li.innerHTML = `
+                 <div class="cart-item-info">
+                     <span class="cart-item-title">${item.title}</span>
+                     <span class="cart-item-price"> 10 $</span>
+                   </div>
+                 <button class="remove-from-cart-button" data-sound-id="${soundId}">×</button>
+                 `;
+               cartItemsList.appendChild(li);
+               total += 10;
+              cartItemCount++;
+          }
+        }
+
+
+          cartTotalAmount.textContent = total;
+          cartCountElement.textContent = cartItemCount;
+
+          if (cartItemCount > 0) {
+            cartNotification.style.display = 'flex';
+        } else {
+            cartNotification.style.display = 'none';
+        }
+
+    }
+
+       function updateButtonState(button) {
+          const soundId = button.dataset.soundId;
+           const isPurchasable = button.dataset.isPurchasable === "true";
+          const isInCart = cart.hasOwnProperty(soundId);
+
+           if (isPurchasable) {
+              if (isInCart) {
+                   button.textContent = 'Remove';
+                    button.style.display = 'inline-block';
+             } else {
+                button.textContent = 'Buy Now';
+                   button.style.display = 'inline-block';
+            }
+           }
+           else {
+               button.style.display = 'none';
+            }
+        }
+      function addToCart(item) {
+          if (!cart.hasOwnProperty(item.id) && item.isPurchasable) {
+              cart[item.id] = item;
+              updateCartDisplay();
+			  saveCartToLocalStorage();
+          }
+
+      }
+
+
+         function removeFromCart(soundId) {
+           if (cart.hasOwnProperty(soundId)) {
+                delete cart[soundId];
+               updateCartDisplay();
+               saveCartToLocalStorage();
+          }
+         }
+
+        function saveCartToLocalStorage() {
+            localStorage.setItem('shoppingCart', JSON.stringify(cart));
+        }
+
+        function loadCartFromLocalStorage() {
+            const cartData = localStorage.getItem('shoppingCart');
+            return cartData ? JSON.parse(cartData) : {};
+        }
+        // Инициализация корзины и отображения при загрузке страницы
+        updateCartDisplay();
+
+        // Обработчики событий
+         addToCartButtons.forEach(button => {
+           button.addEventListener('click', function() {
+             const soundId = this.dataset.soundId;
+             const isPurchasable = this.dataset.isPurchasable === "true";
+            const modalContent = this.closest('.modal-content');
+            const title = modalContent.querySelector('#modal-title').textContent;
+            if (isPurchasable) {
+                const isInCart = cart.hasOwnProperty(soundId);
+                 if (!isInCart) {
+                   addToCart({ id: soundId, title: title, isPurchasable: isPurchasable });
+                   this.textContent = 'Remove';
+
+                    } else {
+                      removeFromCart(soundId);
+                       this.textContent = 'Buy Now';
+                    }
+                     updateButtonState(this); // Обновляем состояние кнопки после добавления/удаления
+            }
+
+              });
+           });
+
+      cartItemsList.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-from-cart-button')) {
+               const soundId = event.target.dataset.soundId;
+
+               removeFromCart(soundId);
+
+                // Обновляем текст кнопки, если она есть на странице
+              const modalBuyNowButton = document.querySelector(`.add-to-cart-button[data-sound-id="${soundId}"]`);
+
+               if (modalBuyNowButton) {
+                   updateButtonState(modalBuyNowButton);
+               }
+            }
+          });
+        // Open cart modal
+        cartNotification.addEventListener('click', () => {
+            cartOverlay.style.display = 'flex';
+            disableScroll();
+        });
+         // Close the cart modal
+        cartCloseButton.addEventListener('click', () => {
+              cartOverlay.style.display = 'none';
+               enableScroll();
+         });
+        window.addEventListener('click', function(event) {
+           if (event.target === cartOverlay) {
+               cartOverlay.style.display = 'none';
+                enableScroll();
+           }
+        });
+
+         // Checkout button logic
+          checkoutButton.addEventListener('click', function() {
+            const totalAmount = parseInt(cartTotalAmount.textContent);
+            if (totalAmount > 0) {
+                fetch('/assets/js/payment_links.json') // Путь к вашему файлу payment_links.json
+                    .then(response => response.json())
+                    .then(data => {
+                        let productId = null;
+
+                        for (const option of data.payment_options) {
+                            if (option.amount === totalAmount) {
+                                productId = option.product_id;
+                                break;
+                            }
+                        }
+
+                        if (!productId) {
+                            for (const option of data.payment_options) {
+                                if (option.amount === "default") {
+                                    productId = option.product_id;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (productId) {
+                            // **Используем Payhip.Checkout.open для открытия модального окна**
+                            if (typeof Payhip !== 'undefined' && typeof Payhip.Checkout !== 'undefined' && typeof Payhip.Checkout.open === 'function') {
+                                Payhip.Checkout.open({ product: productId });
+                            } else {
+                                console.warn("Payhip Modal Checkout не инициализирован. Проверьте интеграцию payhip.js.");
+                                // **Опционально: Fallback к перенаправлению на страницу Payhip (если это приемлемо)**
+                                // window.location.href = `https://payhip.com/b/${productId}`;
+                                alert("Не удалось открыть форму оплаты. Пожалуйста, попробуйте позже.");
+                            }
+                        } else {
+                            alert("Не удалось найти Product ID для вашей суммы.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Ошибка загрузки файла payment_links.json:", error);
+                        alert("Ошибка при попытке оформления заказа. Пожалуйста, попробуйте позже.");
+                    });
+            } else {
+                alert("Ваша корзина пуста. Добавьте звуки для оформления заказа.");
+            }
+         });
+
+
+    playButtons.forEach(button => {
+      const soundItem = button.closest('.sound-item');
+      const audioElement = soundItem.querySelector('.sound-audio');
+      const audioId = Math.random().toString(36).substring(2, 15);
+      audioElement.dataset.audioId = audioId;
+      button.dataset.audioId = audioId;
+
+
+      button.addEventListener('click', function () {
+        if (currentlyPlayingAudio !== audioElement) {
+          stopCurrentlyPlaying();
+        }
+
+        if (audioElement.paused) {
+          audioElement.currentTime = 0;
+          audioElement.play();
+          button.classList.add('playing');
+          currentlyPlayingAudio = audioElement;
+        } else {
+          audioElement.pause();
+          button.classList.remove('playing');
+          currentlyPlayingAudio = null;
+        }
+      });
+
+      audioElement.addEventListener('ended', function () {
+        button.classList.remove('playing');
+        currentlyPlayingAudio = null;
+      });
+    });
+
+
+    closeButton.addEventListener('click', function () {
+      modal.style.display = 'none';
+      modalAudio.pause();
+      stopCurrentlyPlaying();
+      enableScroll();
+    });
+
+    window.addEventListener('click', function (event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+        modalAudio.pause();
+        stopCurrentlyPlaying();
+        enableScroll();
+      }
+    });
+
+    const copyButtons = document.querySelectorAll('.copy-button');
+    copyButtons.forEach(button => {
+      button.addEventListener('click', function () {
+        const targetSelector = this.dataset.copyTarget;
+        const targetElement = document.querySelector(targetSelector);
+        if (targetElement) {
+          navigator.clipboard.writeText(targetElement.textContent)
+            .then(() => {
+              console.log('Текст скопирован!');
+            })
+            .catch(err => {
+              console.error('Не удалось скопировать текст: ', err);
+            });
+        }
+      });
+    });
+  });
+
+  function disableScroll() {
+    document.body.style.overflow = 'hidden';
+  }
+
+  function enableScroll() {
+    document.body.style.overflow = '';
+  }
+</script>
