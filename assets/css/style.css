@@ -1363,3 +1363,43 @@ audio::-webkit-media-controls-timeline {
     color: var(--primary-color); /* Пример подсветки */
     font-weight: bold;
 }
+
+/* Стили для кнопки скачивания/регистрации звука */
+.sound-action-button {
+    /* Наследуем базовые стили, если нужно (уже есть класс button-base) */
+    /* @extend .button-base; */ /* Это для SCSS, в CSS просто убедитесь, что класс есть в HTML */
+
+    /* Стили, похожие на .copy-button */
+    background: none;
+    color: var(--lcar-light-blue);
+    border: 1px solid var(--lcar-light-blue);
+    padding: 2px 8px; /* Немного увеличим отступ по бокам для текста Download */
+    cursor: pointer;
+    font-size: 0.8em;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-duration) ease;
+    /* margin-left уже установлен inline в HTML, можно убрать отсюда или там */
+    /* min-width и text-align тоже установлены inline */
+}
+
+.sound-action-button:hover:not(:disabled) { /* Добавляем :not(:disabled) */
+    background-color: var(--lcar-light-blue);
+    color: var(--background-color);
+}
+
+/* Стиль для неактивной кнопки (когда не хватает атомов) */
+.sound-action-button:disabled {
+    border-color: var(--border-color); /* Серая граница */
+    color: var(--border-color); /* Серый текст */
+    cursor: not-allowed; /* Курсор "запрещено" */
+    background: none; /* Убираем фон при наведении на неактивную */
+}
+
+/* Убираем лишние стили от .button-base, если они мешают */
+.sound-action-button {
+    /* Например, если .button-base задает другой background-color */
+     background-color: transparent !important; /* Переопределяем, если нужно */
+}
+.sound-action-button:hover:not(:disabled) {
+     background-color: var(--lcar-light-blue) !important; /* Переопределяем */
+}

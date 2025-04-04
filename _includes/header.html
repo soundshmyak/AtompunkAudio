@@ -1,6 +1,4 @@
-<!-- START OF FILE header.html (ИЗМЕНЕННЫЙ) -->
 <header id="page-header">
-
     <div id="page-media">
         <div class="top-bar">
             <nav class="main-nav">
@@ -9,7 +7,6 @@
                     <span class="visually-hidden">Menu</span>
                 </button>
             </nav>
-            <!-- Полноэкранный popup menu -->
             <div id="fullscreen-popup" class="fullscreen-popup">
                 <div class="popup-content">
                     <button class="popup-close-button close-button" onclick="closeFullscreenPopup()">×</button>
@@ -23,24 +20,22 @@
                     </nav>
                 </div>
             </div>
-
-            <!-- ++ НАЧАЛО: Новый блок управления Auth0 (Заменяет старую кнопку) ++ -->
             <div class="auth-controls" style="margin-left: auto; display: flex; align-items: center;">
-                <!-- Этот div будет показывать имя и аватар пользователя -->
-                <div id="user-profile" style="display: none; margin-right: 10px;">
-                  <!-- Сюда JS вставит информацию о пользователе (аватар, имя) -->
-                  <!-- Стили для аватара можно добавить в CSS, см. Шаг 5 -->
+                <div id="user-profile" style="display: none; margin-right: 10px; display: flex; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; margin-right: 10px;">
+                         <img id="user-avatar" src="" alt="Аватар" width="30" height="30" style="border-radius: 50%; vertical-align: middle; margin-right: 5px;">
+                         <span id="user-name" style="vertical-align: middle;"></span>
+                    </div>
+                    <div id="user-balance-section" style="display: none; align-items: center; margin-right: 10px;">
+                        <span style="margin-right: 5px;">Баланс:</span>
+                        <strong id="user-atom-balance">0</strong>
+                        <span style="margin-left: 2px;">атомов</span>
+                    </div>
+                    <button id="top-up-button" class="button-base nav-button" style="display: none; font-size: 0.8em; padding: 3px 8px;">Пополнить</button>
                 </div>
-
-                <!-- Кнопка Входа/Регистрации (видна, если не вошел) -->
-                <!-- Используем классы button-base nav-button для схожего вида -->
                 <button id="login-btn" class="button-base nav-button" style="display: none;">Вход / Регистрация</button>
-
-                <!-- Кнопка Выхода (видна, если вошел) -->
                 <button id="logout-btn" class="button-base nav-button" style="display: none;">Выйти</button>
             </div>
-            <!-- ++ КОНЕЦ: Новый блок управления Auth0 ++ -->
-
         </div>
         <div class="page-media-wrap">
              <div id="page_media_container" class="page-media-wrapper">
@@ -76,15 +71,4 @@
             >>>Здесь будет текст вашей нижней бегущей строки. Например, "© 2024 Atompunk Audio. Все права защищены. Подписывайтесь на нас в социальных сетях! "
         </div>
     </div>
-
-    <!-- Модальное окно авторизации УДАЛЕНО -->
-    <!-- <div id="auth-modal" class="modal" style="display: none;"> ... </div> -->
-
-    <!-- Скрипт для старой авторизации УДАЛЕН -->
-    <!-- <script> ... </script> -->
-
-    <!-- Подключение main.js было здесь - УДАЛЕНО (перенесено/оставлено в default.html) -->
-    <!-- <script src="assets/js/main.js"></script> -->
-
  </header>
-<!-- END OF FILE header.html (ИЗМЕНЕННЫЙ) -->

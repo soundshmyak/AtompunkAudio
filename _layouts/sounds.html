@@ -9,24 +9,27 @@ layout: default
   {% include search-bar.html %}
   <div class="red-zone"></div>
   <br>Last update: 24.01.25<br>
+
   <div class="sound-list">
     {% for sound in site.sounds %}
     <div class="sound-item"
-         data-sound-title="{{ sound.title }}"
-         data-sound-tags="{{ sound.tags | join: ',' }}"
+         data-sound-title="{{ sound.title | escape }}"
+         data-sound-tags="{{ sound.tags | join: ',' | escape }}"
          data-sound-path="{{ '/assets/audio/' | append: sound.path | remove: '_sounds/' | replace: '.md', '.mp3' | relative_url }}"
-         data-sound-hash="{{ sound.hash }}"
-		 data-sound-product="{{ sound.product }}"
-         data-sound-extracted-from="{{ sound.extracted_from }}"
-         data-sound-pak-name="{{ sound.pak_name }}"
-         data-sound-event-name="{{ sound.event_name }}"
-         data-is-purchasable="{% if sound.product %}true{% else %}false{% endif %}">
+         data-sound-hash="{{ sound.hash | escape }}"
+         data-sound-product="{{ sound.product | escape }}"
+         data-sound-extracted-from="{{ sound.extracted_from | escape }}"
+         data-sound-pak-name="{{ sound.pak_name | escape }}"
+         data-sound-event-name="{{ sound.event_name | escape }}"
+         data-cost="{% if sound.type == 'music' %}15{% else %}3{% endif %}"
+         data-is-purchasable="true">
+
       <div class="sound-preview">
         <button
           class="relative rounded-full p-2.5 text-zinc-400 transition bg-red bg-opacity-25 hover:bg-opacity-40 hover:text-white disabled:bg-cyan disabled:bg-opacity-5 disabled:text-zinc-600 button-base play-button"
           title="Play the sound">
           <img src="/assets/images/playing-animation.gif" alt="Playing Animation" class="playing-gif"
-            style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 70%;height: 70%;object-fit: contain;">
+            style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 70%;height: 70%;object-fit: contain; display: none;">
           <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             class="feather feather-volume-2 play-icon">
@@ -49,11 +52,12 @@ layout: default
         {% if sound.tags %}
         <p class="sound-tags">
           {% for tag in sound.tags %}
-          <span>{{ tag }}</span>
+          <span>{{ tag | escape }}</span>
           {% endfor %}
         </p>
         {% endif %}
       </div>
+
       <audio class="sound-audio" controls preload="none" style="display: none;">
         <source
           src="{{ '/assets/audio/' | append: sound.path | remove: '_sounds/' | replace: '.md', '.mp3' | relative_url }}"
@@ -62,6 +66,7 @@ layout: default
       </audio>
     </div>
     {% endfor %}
+    <p class="no-results-message" style="display: none;">! No items matching the filter were found.</p>
   </div>
 
   {% if paginator.total_pages > 1 %}
@@ -69,17 +74,15 @@ layout: default
     {% if paginator.previous_page %}
     <a href="{{ paginator.previous_page_path | relative_url }}">« Назад</a>
     {% endif %}
-
     {% for page_num in (1..paginator.total_pages) %}
-    {% if page_num == paginator.page %}
-    <span class="current">{{ page_num }}</span>
-    {% else %}
-    <a href="{{ paginator.page_path | replace: ':num', page_num | relative_url }}">{{ page_num }}</a>
-    {% endif %}
+      {% if page_num == paginator.page %}
+        <span class="current">{{ page_num }}</span>
+      {% else %}
+        <a href="{{ paginator.page_path | replace: ':num', page_num | relative_url }}">{{ page_num }}</a>
+      {% endif %}
     {% endfor %}
-
     {% if paginator.next_page %}
-    <a href="{{ paginator.next_page_path | relative_url }}">Вперед »</a>
+      <a href="{{ paginator.next_page_path | relative_url }}">Вперед »</a>
     {% endif %}
   </div>
   {% endif %}
@@ -90,48 +93,34 @@ layout: default
       <h2 id="modal-title">Sound Effect</h2>
       <audio id="modal-audio" controlsList="nodownload" controls preload="none"></audio>
       <div class="modal-details">
-        <p>AUDIO: <span id="modal-hash"></span> <a href="/license">
-            <button class="copy-button">license</button></a></p>
+        <p>AUDIO: <span id="modal-hash"></span> <a href="/license" target="_blank" rel="noopener noreferrer">
+            <button class="copy-button button-base">license</button></a></p>
         <p>ТИП: <span id="modal-extracted-from"></span></p>
         <p>FULL NAME: <span id="modal-pak-name"></span>
-             <button class="buy-now-button-modal add-to-cart-button" data-sound-id="" data-is-purchasable="false">Buy Now</button></p>
+             <button class="button-base sound-action-button"
+                     data-sound-id=""
+                     data-cost=""
+                     style="margin-left: 10px; min-width: 100px; text-align: center;">
+                 <!-- Initial text removed, state will be set by JS -->
+             </button>
+        </p>
       </div>
       <div class="modal-events">
-        <p>LIBRARY: <span id="modal-event-name"></span> <a href="/library">
-            <button class="copy-button">view</button></a></p>
+        <p>LIBRARY: <span id="modal-event-name"></span> <a href="/library" target="_blank" rel="noopener noreferrer">
+            <button class="copy-button button-base">view</button></a></p>
       </div>
       <div class="modal-tags" id="modal-tags">
-        <p>TAGS (3): </p>
+        <p>TAGS:</p>
       </div>
     </div>
   </div>
 
-    <!-- Корзина -->
-    <div id="cart-overlay" class="overlay" style="display: none;">
-      <div id="cart-modal" class="cart-modal">
-          <span class="close-button cart-close-button">× CLOSE</span>
-          <h2>Your Cart</h2>
-          <ul id="cart-items">
-               <!-- Элементы корзины будут добавляться здесь -->
-          </ul>
-         <div class="cart-total">
-            Total: <span id="cart-total-amount">0</span>$
-        </div>
-        <button id="checkout-button" class="checkout-button button-base">Checkout</button>
-      </div>
-   </div>
-          <div id="cart-notification" class="cart-notification">
-		  <img src="/assets/images/cart.svg" alt="Корзина" class="cart-icon">
-            <span id="cart-count-circle" class="cart-count-circle">
-                <span id="cart-count">0</span>
-            </span>
-        </div>
 </div>
 
 <script src="{{ '/assets/js/search.js' | relative_url }}" defer></script>
-<script type="text/javascript" src="https://payhip.com/payhip.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Variable Declarations ---
     const searchInput = document.getElementById('search-input');
     const categoryFilter = document.getElementById('category-filter');
     const soundItems = document.querySelectorAll('.sound-item');
@@ -141,32 +130,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('sound-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalAudio = document.getElementById('modal-audio');
-    const closeButton = modal.querySelector('.close-button');
+    const modalCloseButton = modal.querySelector('.close-button');
     const modalHash = document.getElementById('modal-hash');
     const modalExtractedFrom = document.getElementById('modal-extracted-from');
     const modalPakName = document.getElementById('modal-pak-name');
     const modalEventName = document.getElementById('modal-event-name');
     const modalTagsContainer = document.getElementById('modal-tags');
-    let noResultsMessage = null;
+    const noResultsMessage = document.querySelector('.no-results-message');
+
     let currentlyPlayingAudio = null;
-	  // Cart elements
-      const cartOverlay = document.getElementById('cart-overlay');
-      const cartModal = document.getElementById('cart-modal');
-      const cartItemsList = document.getElementById('cart-items');
-      const cartCountElement = document.getElementById('cart-count');
-      const cartTotalAmount = document.getElementById('cart-total-amount');
-      const addToCartButtons = document.querySelectorAll('.add-to-cart-button');
-      const cartCloseButton = cartModal.querySelector('.cart-close-button');
-	  const cartNotification = document.getElementById('cart-notification');
-       const checkoutButton = document.getElementById('checkout-button');
 
-        let cart = loadCartFromLocalStorage(); // Загрузка корзины из localStorage при загрузке страницы
-
+    // --- Audio Player Logic ---
     function stopCurrentlyPlaying() {
       if (currentlyPlayingAudio) {
-        const associatedButton = document.querySelector(`.play-button[data-audio-id="${currentlyPlayingAudio.dataset.audioId}"]`);
+        const audioId = currentlyPlayingAudio.dataset.audioId;
+        const associatedButton = document.querySelector(`.play-button[data-audio-id="${audioId}"]`);
+
         if (associatedButton) {
-          associatedButton.classList.remove('playing');
+            const playIcon = associatedButton.querySelector('.play-icon');
+            const pauseIcon = associatedButton.querySelector('.pause-icon');
+            const playingGif = associatedButton.querySelector('.playing-gif');
+
+            associatedButton.classList.remove('playing');
+            if(playIcon) playIcon.style.display = 'block';
+            if(pauseIcon) pauseIcon.style.display = 'none';
+            if(playingGif) playingGif.style.display = 'none';
         }
         currentlyPlayingAudio.pause();
         currentlyPlayingAudio.currentTime = 0;
@@ -174,374 +162,302 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-
-     function filterSounds() {
-      const searchTerm = searchInput.value.toLowerCase();
-      const selectedCategory = categoryFilter.value;
-      let foundSounds = false;
-
-       soundItems.forEach(item => {
-          const title = item.dataset.soundTitle.toLowerCase();
-          const tags = item.dataset.soundTags.toLowerCase();
-          const extractedFrom = item.dataset.soundExtractedFrom.toLowerCase();
-          const pakName = item.dataset.soundPakName.toLowerCase();
-          const eventName = item.dataset.soundEventName.toLowerCase();
-
-          let isCategoryMatch = false;
-
-          if (selectedCategory === 'all' || extractedFrom === selectedCategory) {
-            isCategoryMatch = true;
-          }
-
-          const isSearchMatch =
-              title.includes(searchTerm) ||
-              tags.includes(searchTerm) ||
-              extractedFrom.includes(searchTerm) ||
-              pakName.includes(searchTerm) ||
-              eventName.includes(searchTerm);
-
-
-          if (isCategoryMatch && isSearchMatch) {
-            item.style.display = 'flex';
-            foundSounds = true;
-          } else {
-             item.style.display = 'none';
-          }
-      });
-
-      if (noResultsMessage) {
-          noResultsMessage.remove();
-          noResultsMessage = null;
-      }
-
-      if (!foundSounds && searchTerm.trim() !== '') {
-          noResultsMessage = document.createElement('p');
-          noResultsMessage.textContent = '! No items matching the filter were found. ';
-          noResultsMessage.classList.add('no-results-message');
-          soundList.appendChild(noResultsMessage);
-        }
-    }
-
-
-    searchInput.addEventListener('input', filterSounds);
-    categoryFilter.addEventListener('change', filterSounds);
-
-    function extractAllCategories() {
-      const categoriesSet = new Set();
-      soundItems.forEach(item => {
-        categoriesSet.add(item.dataset.soundExtractedFrom.trim().toLowerCase());
-      });
-      const uniqueCategories = Array.from(categoriesSet);
-      categoryFilter.innerHTML = '<option value="all">any</option>';
-      uniqueCategories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        categoryFilter.appendChild(option);
-      });
-    }
-
-    extractAllCategories();
-    filterSounds();
-
-    soundTitles.forEach(titleElement => {
-      titleElement.addEventListener('click', function () {
-        stopCurrentlyPlaying();
-
-        const soundItem = this.closest('.sound-item');
-        const title = soundItem.dataset.soundTitle;
-        const tags = soundItem.dataset.soundTags.split(',');
-        const audioPath = soundItem.dataset.soundPath;
-        const hash = soundItem.dataset.soundHash;
-        const extractedFrom = soundItem.dataset.soundExtractedFrom;
-        const pakName = soundItem.dataset.soundPakName;
-        const eventName = soundItem.dataset.soundEventName;
-       const isPurchasable = soundItem.dataset.isPurchasable === "true";
-
-
-        modalTitle.textContent = title;
-        modalAudio.src = audioPath;
-        modalHash.textContent = hash;
-        modalExtractedFrom.textContent = extractedFrom;
-        modalPakName.textContent = pakName;
-        modalEventName.textContent = eventName;
-
-        modalTagsContainer.innerHTML = '<p>TAGS:</p>';
-        tags.forEach(tag => {
-          const span = document.createElement('span');
-          span.textContent = tag.trim();
-          modalTagsContainer.appendChild(span);
-        });
-
-        // Обновляем data-sound-id и data-is-purchasable на кнопке
-         const buyNowButtonModal = modal.querySelector('.add-to-cart-button');
-        buyNowButtonModal.dataset.soundId = pakName;
-         buyNowButtonModal.dataset.isPurchasable = isPurchasable;
-
-
-       // Обновляем кнопку на основе состояния корзины
-       updateButtonState(buyNowButtonModal);
-        modal.style.display = 'block';
-        disableScroll();
-      });
-    });
-
-      // Функции для работы с корзиной
-      function updateCartDisplay() {
-        cartItemsList.innerHTML = '';
-        let total = 0;
-		let cartItemCount = 0;
-
-       for (const soundId in cart) {
-          if (cart.hasOwnProperty(soundId)) {
-            const item = cart[soundId];
-               const li = document.createElement('li');
-               li.innerHTML = `
-                 <div class="cart-item-info">
-                     <span class="cart-item-title">${item.title}</span>
-                     <span class="cart-item-price"> 10 $</span>
-                   </div>
-                 <button class="remove-from-cart-button" data-sound-id="${soundId}">×</button>
-                 `;
-               cartItemsList.appendChild(li);
-               total += 10;
-              cartItemCount++;
-          }
-        }
-
-
-          cartTotalAmount.textContent = total;
-          cartCountElement.textContent = cartItemCount;
-
-          if (cartItemCount > 0) {
-            cartNotification.style.display = 'flex';
-        } else {
-            cartNotification.style.display = 'none';
-        }
-
-    }
-
-       function updateButtonState(button) {
-          const soundId = button.dataset.soundId;
-           const isPurchasable = button.dataset.isPurchasable === "true";
-          const isInCart = cart.hasOwnProperty(soundId);
-
-           if (isPurchasable) {
-              if (isInCart) {
-                   button.textContent = 'Remove';
-                    button.style.display = 'inline-block';
-             } else {
-                button.textContent = 'Buy Now';
-                   button.style.display = 'inline-block';
-            }
-           }
-           else {
-               button.style.display = 'none';
-            }
-        }
-      function addToCart(item) {
-          if (!cart.hasOwnProperty(item.id) && item.isPurchasable) {
-              cart[item.id] = item;
-              updateCartDisplay();
-			  saveCartToLocalStorage();
-          }
-
-      }
-
-
-         function removeFromCart(soundId) {
-           if (cart.hasOwnProperty(soundId)) {
-                delete cart[soundId];
-               updateCartDisplay();
-               saveCartToLocalStorage();
-          }
-         }
-
-        function saveCartToLocalStorage() {
-            localStorage.setItem('shoppingCart', JSON.stringify(cart));
-        }
-
-        function loadCartFromLocalStorage() {
-            const cartData = localStorage.getItem('shoppingCart');
-            return cartData ? JSON.parse(cartData) : {};
-        }
-        // Инициализация корзины и отображения при загрузке страницы
-        updateCartDisplay();
-
-        // Обработчики событий
-         addToCartButtons.forEach(button => {
-           button.addEventListener('click', function() {
-             const soundId = this.dataset.soundId;
-             const isPurchasable = this.dataset.isPurchasable === "true";
-            const modalContent = this.closest('.modal-content');
-            const title = modalContent.querySelector('#modal-title').textContent;
-            if (isPurchasable) {
-                const isInCart = cart.hasOwnProperty(soundId);
-                 if (!isInCart) {
-                   addToCart({ id: soundId, title: title, isPurchasable: isPurchasable });
-                   this.textContent = 'Remove';
-
-                    } else {
-                      removeFromCart(soundId);
-                       this.textContent = 'Buy Now';
-                    }
-                     updateButtonState(this); // Обновляем состояние кнопки после добавления/удаления
-            }
-
-              });
-           });
-
-      cartItemsList.addEventListener('click', function(event) {
-            if (event.target.classList.contains('remove-from-cart-button')) {
-               const soundId = event.target.dataset.soundId;
-
-               removeFromCart(soundId);
-
-                // Обновляем текст кнопки, если она есть на странице
-              const modalBuyNowButton = document.querySelector(`.add-to-cart-button[data-sound-id="${soundId}"]`);
-
-               if (modalBuyNowButton) {
-                   updateButtonState(modalBuyNowButton);
-               }
-            }
-          });
-        // Open cart modal
-        cartNotification.addEventListener('click', () => {
-            cartOverlay.style.display = 'flex';
-            disableScroll();
-        });
-         // Close the cart modal
-        cartCloseButton.addEventListener('click', () => {
-              cartOverlay.style.display = 'none';
-               enableScroll();
-         });
-        window.addEventListener('click', function(event) {
-           if (event.target === cartOverlay) {
-               cartOverlay.style.display = 'none';
-                enableScroll();
-           }
-        });
-
-         // Checkout button logic
-          checkoutButton.addEventListener('click', function() {
-            const totalAmount = parseInt(cartTotalAmount.textContent);
-            if (totalAmount > 0) {
-                fetch('/assets/js/payment_links.json') // Путь к вашему файлу payment_links.json
-                    .then(response => response.json())
-                    .then(data => {
-                        let productId = null;
-
-                        for (const option of data.payment_options) {
-                            if (option.amount === totalAmount) {
-                                productId = option.product_id;
-                                break;
-                            }
-                        }
-
-                        if (!productId) {
-                            for (const option of data.payment_options) {
-                                if (option.amount === "default") {
-                                    productId = option.product_id;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (productId) {
-                            // **Используем Payhip.Checkout.open для открытия модального окна**
-                            if (typeof Payhip !== 'undefined' && typeof Payhip.Checkout !== 'undefined' && typeof Payhip.Checkout.open === 'function') {
-                                Payhip.Checkout.open({ product: productId });
-                            } else {
-                                console.warn("Payhip Modal Checkout не инициализирован. Проверьте интеграцию payhip.js.");
-                                // **Опционально: Fallback к перенаправлению на страницу Payhip (если это приемлемо)**
-                                // window.location.href = `https://payhip.com/b/${productId}`;
-                                alert("Не удалось открыть форму оплаты. Пожалуйста, попробуйте позже.");
-                            }
-                        } else {
-                            alert("Не удалось найти Product ID для вашей суммы.");
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Ошибка загрузки файла payment_links.json:", error);
-                        alert("Ошибка при попытке оформления заказа. Пожалуйста, попробуйте позже.");
-                    });
-            } else {
-                alert("Ваша корзина пуста. Добавьте звуки для оформления заказа.");
-            }
-         });
-
-
     playButtons.forEach(button => {
       const soundItem = button.closest('.sound-item');
       const audioElement = soundItem.querySelector('.sound-audio');
-      const audioId = Math.random().toString(36).substring(2, 15);
+      const playIcon = button.querySelector('.play-icon');
+      const pauseIcon = button.querySelector('.pause-icon');
+      const playingGif = button.querySelector('.playing-gif');
+
+      // Assign a unique ID if source isn't immediately available (though it should be)
+      const audioId = audioElement.querySelector('source')?.src || `audio-${Math.random().toString(16).slice(2)}`;
       audioElement.dataset.audioId = audioId;
       button.dataset.audioId = audioId;
 
-
       button.addEventListener('click', function () {
-        if (currentlyPlayingAudio !== audioElement) {
+        if (currentlyPlayingAudio && currentlyPlayingAudio !== audioElement) {
           stopCurrentlyPlaying();
         }
 
         if (audioElement.paused) {
-          audioElement.currentTime = 0;
-          audioElement.play();
-          button.classList.add('playing');
-          currentlyPlayingAudio = audioElement;
+          audioElement.play().then(() => {
+              button.classList.add('playing');
+              if(playIcon) playIcon.style.display = 'none';
+              if(pauseIcon) pauseIcon.style.display = 'block';
+              if(playingGif) playingGif.style.display = 'block';
+              currentlyPlayingAudio = audioElement;
+          }).catch(error => {
+              console.error("Audio playback failed for:", audioElement.src, error);
+              // Attempt to stop just in case state is inconsistent
+              stopCurrentlyPlaying();
+          });
         } else {
+          // If already playing and clicked again, pause it
           audioElement.pause();
-          button.classList.remove('playing');
-          currentlyPlayingAudio = null;
+          // State update (removing playing class etc.) handled by the 'pause' event listener
         }
       });
 
-      audioElement.addEventListener('ended', function () {
-        button.classList.remove('playing');
-        currentlyPlayingAudio = null;
+      // Use ended event to reset the button state
+      audioElement.addEventListener('ended', () => {
+          // Ensure it was the currently playing one before resetting
+          if (currentlyPlayingAudio === audioElement) {
+              stopCurrentlyPlaying();
+          }
+      });
+
+      // Use pause event to reset button ONLY if it was triggered by user action
+      // (or external stop), not just naturally ending.
+      audioElement.addEventListener('pause', () => {
+        // Check if pause happened before the 'ended' event fired (currentTime < duration)
+        // and if this audio was the one supposed to be playing
+        if (currentlyPlayingAudio === audioElement && audioElement.currentTime < audioElement.duration) {
+            stopCurrentlyPlaying();
+        }
       });
     });
 
+    // --- Filtering Logic ---
+    function filterSounds() {
+        if (!searchInput || !categoryFilter || !soundList) {
+            console.error("Search input, category filter, or sound list not found. Filtering disabled.");
+            return;
+        }
 
-    closeButton.addEventListener('click', function () {
-      modal.style.display = 'none';
-      modalAudio.pause();
-      stopCurrentlyPlaying();
-      enableScroll();
+        const searchTerm = (searchInput.value ?? '').toLowerCase().trim();
+        const selectedCategory = categoryFilter.value;
+        let foundSounds = false;
+
+        soundItems.forEach(item => {
+            const title = (item.dataset.soundTitle ?? '').toLowerCase();
+            const tags = (item.dataset.soundTags ?? '').toLowerCase();
+            const extractedFrom = (item.dataset.soundExtractedFrom ?? '').toLowerCase();
+            const pakName = (item.dataset.soundPakName ?? '').toLowerCase();
+            const eventName = (item.dataset.soundEventName ?? '').toLowerCase();
+
+            // Category match check
+            const isCategoryMatch = (selectedCategory === 'all') || (extractedFrom === selectedCategory);
+
+            // Search term match check (checks multiple fields)
+            const isSearchMatch = !searchTerm ||
+                                  title.includes(searchTerm) ||
+                                  tags.includes(searchTerm) ||
+                                  extractedFrom.includes(searchTerm) ||
+                                  pakName.includes(searchTerm) ||
+                                  eventName.includes(searchTerm);
+
+            // Show item if both category and search term match
+            if (isCategoryMatch && isSearchMatch) {
+                item.style.display = 'flex'; // Use flex as defined in CSS likely
+                foundSounds = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Show/hide the 'no results' message
+        if (noResultsMessage) {
+            noResultsMessage.style.display = foundSounds ? 'none' : 'block';
+        }
+    }
+
+    function extractAllCategories() {
+        if (!categoryFilter) return;
+
+        const categoriesSet = new Set();
+        soundItems.forEach(item => {
+            const category = item.dataset.soundExtractedFrom?.trim().toLowerCase();
+            if (category) {
+                categoriesSet.add(category);
+            }
+        });
+
+        const uniqueCategories = Array.from(categoriesSet).sort();
+
+        // Clear existing options except the "All" option
+        while (categoryFilter.options.length > 1) {
+             categoryFilter.remove(1);
+        }
+
+        // Add unique categories to the dropdown
+        uniqueCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            // Capitalize first letter for display
+            option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+            categoryFilter.appendChild(option);
+        });
+    }
+
+    // Initialize filters and categories if elements exist
+    if (searchInput && categoryFilter && soundList) {
+        extractAllCategories(); // Populate category dropdown
+        filterSounds(); // Apply initial filter state
+
+        // Add event listeners for dynamic filtering
+        searchInput.addEventListener('input', filterSounds);
+        categoryFilter.addEventListener('change', filterSounds);
+    } else {
+         console.warn("Search or filter elements missing, filtering setup skipped.");
+    }
+
+    // --- Modal Logic ---
+    soundTitles.forEach(titleElement => {
+        titleElement.addEventListener('click', function (event) {
+            event.preventDefault(); // Prevent default link behavior if it was an <a>
+            stopCurrentlyPlaying(); // Stop any currently playing preview
+
+            const soundItem = this.closest('.sound-item');
+            if (!soundItem) {
+                console.error("Could not find parent sound item for title:", this);
+                return;
+            }
+
+            // Retrieve all data attributes from the clicked item
+            const title = soundItem.dataset.soundTitle;
+            const tags = (soundItem.dataset.soundTags ?? '').split(',');
+            const audioPath = soundItem.dataset.soundPath;
+            const hash = soundItem.dataset.soundHash;
+            const extractedFrom = soundItem.dataset.soundExtractedFrom;
+            const pakName = soundItem.dataset.soundPakName;
+            const eventName = soundItem.dataset.soundEventName;
+            const cost = soundItem.dataset.cost;
+
+            // --- Populate Modal Fields ---
+            modalTitle.textContent = title || 'Sound Effect';
+            modalAudio.src = audioPath; // Set audio source for the modal player
+            modalHash.textContent = hash || 'N/A';
+            modalExtractedFrom.textContent = extractedFrom || 'N/A';
+            modalPakName.textContent = pakName || 'N/A';
+            modalEventName.textContent = eventName || 'N/A';
+
+            // Populate tags in the modal
+            modalTagsContainer.innerHTML = '<p>TAGS:</p>'; // Clear previous tags
+            tags.forEach(tag => {
+                const trimmedTag = tag.trim();
+                if (trimmedTag) { // Avoid creating empty spans
+                    const span = document.createElement('span');
+                    span.textContent = trimmedTag;
+                    modalTagsContainer.appendChild(span);
+                }
+            });
+
+            // --- Configure Modal Action Button ---
+            const modalButton = modal.querySelector('.sound-action-button');
+            if (modalButton) {
+                modalButton.dataset.soundId = pakName || ''; // Set the unique ID for the button
+                modalButton.dataset.cost = cost || '0';     // Set the cost data attribute
+
+                // *** MODIFICATION START ***
+                // We REMOVE the direct setting of 'Loading...' and disabled=true here.
+                // Instead, we call an external function (assumed to be globally available)
+                // to set the correct state based on purchase status, cart, etc.
+
+                // Attempt to call the specific function first
+                if (typeof window.updateSingleDownloadButtonState === "function") {
+                     window.updateSingleDownloadButtonState(modalButton);
+                } else {
+                    console.warn("Global function 'updateSingleDownloadButtonState' not found.");
+                    // Fallback: try calling the function that updates all buttons
+                    if (typeof window.updateDownloadButtonsState === "function") {
+                         console.warn("Falling back to 'updateDownloadButtonsState'. This might be less efficient.");
+                         window.updateDownloadButtonsState(); // This might update more than needed
+                    } else {
+                         // Final fallback: If no update function is available, set an error state
+                         console.error("Neither 'updateSingleDownloadButtonState' nor 'updateDownloadButtonsState' found. Cannot set button state dynamically.");
+                         modalButton.textContent = 'Status Error';
+                         modalButton.disabled = true;
+                    }
+                }
+                // *** MODIFICATION END ***
+
+            } else {
+                console.error("Action button '.sound-action-button' not found inside the modal!");
+            }
+
+            // Store the source item's ID on the modal content for potential reference elsewhere
+            modal.querySelector('.modal-content').dataset.sourceItemId = pakName || '';
+
+            // --- Display Modal & Disable Background Scrolling ---
+            modal.style.display = 'block';
+            disableScroll();
+
+        });
     });
 
+    // --- Modal Close Logic ---
+    if (modalCloseButton) {
+        modalCloseButton.addEventListener('click', function () {
+            modal.style.display = 'none';
+            modalAudio.pause(); // Stop audio playback when closing
+            modalAudio.currentTime = 0; // Reset audio position
+            modalAudio.src = ''; // Clear src to prevent potential issues
+            enableScroll(); // Re-enable background scrolling
+        });
+    }
+
+    // Close modal if clicking outside the modal content
     window.addEventListener('click', function (event) {
-      if (event.target === modal) {
-        modal.style.display = 'none';
-        modalAudio.pause();
-        stopCurrentlyPlaying();
-        enableScroll();
-      }
+        if (event.target === modal) { // Check if the click was directly on the modal background
+            modal.style.display = 'none';
+            modalAudio.pause();
+            modalAudio.currentTime = 0;
+            modalAudio.src = '';
+            enableScroll();
+        }
     });
 
+    // --- Copy Button Logic ---
     const copyButtons = document.querySelectorAll('.copy-button');
     copyButtons.forEach(button => {
-      button.addEventListener('click', function () {
-        const targetSelector = this.dataset.copyTarget;
-        const targetElement = document.querySelector(targetSelector);
-        if (targetElement) {
-          navigator.clipboard.writeText(targetElement.textContent)
-            .then(() => {
-              console.log('Текст скопирован!');
-            })
-            .catch(err => {
-              console.error('Не удалось скопировать текст: ', err);
-            });
-        }
-      });
+        button.addEventListener('click', function (event) {
+            event.stopPropagation(); // Prevent triggering parent click listeners (like modal close)
+            const linkElement = button.closest('a'); // Find the nearest parent anchor tag
+            let textToCopy = '';
+
+            if (linkElement && linkElement.href) {
+                textToCopy = linkElement.href; // Copy the link URL
+            } else {
+                // Fallback: maybe copy text content of a nearby span if no link? (Adjust as needed)
+                const textSpan = button.parentElement.querySelector('span'); // Example: Get sibling span
+                if (textSpan) {
+                    textToCopy = textSpan.textContent;
+                }
+            }
+
+            if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    // Optionally disable the button briefly
+                    // button.disabled = true;
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        // button.disabled = false;
+                    }, 1500); // Reset after 1.5 seconds
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text.'); // Provide user feedback on failure
+                });
+            } else {
+                console.warn("No text found to copy for button:", button);
+            }
+        });
     });
-  });
 
-  function disableScroll() {
+}); // End of DOMContentLoaded
+
+// --- Utility Functions ---
+function disableScroll() {
     document.body.style.overflow = 'hidden';
-  }
+    // Consider adding paddingRight to prevent layout shift if scrollbar disappears
+    // const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    // document.body.style.paddingRight = `${scrollbarWidth}px`;
+}
 
-  function enableScroll() {
+function enableScroll() {
     document.body.style.overflow = '';
-  }
+    // document.body.style.paddingRight = ''; // Reset padding
+}
+
 </script>

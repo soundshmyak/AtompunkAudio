@@ -1,24 +1,19 @@
-# Jekyll build output
-_site/
-.jekyll-metadata
+# Локальная конфигурация Jekyll (может содержать чувствительные данные)
+_config_local.yml
 
-# Jekyll miscellaneous files
-.jekyll-cache/
-.sass-cache/
-
-# Environment variables file (VERY IMPORTANT!)
+# Файл с переменными окружения для локальной разработки
 .env
 
-# Node dependencies (if you use npm/yarn for assets)
+# Папка сборки Jekyll
+_site/
+
+# Логи и временные файлы
+*.log
+tmp/
+
+# Зависимости Node.js
 node_modules/
 
-# Bundler runtime paths
-# May be needed if you ran bundle install --path vendor/bundle
-# vendor/bundle/
-
-# Mac OS folder attributes
+# Системные файлы
 .DS_Store
-
-# Logs
-logs/
-*.log
+Thumbs.db
