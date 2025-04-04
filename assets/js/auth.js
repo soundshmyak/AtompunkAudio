@@ -317,7 +317,7 @@ const handleDownloadClick = async (event) => {
 
     try {
         // --- Вызов серверной функции ---
-        const downloadUrl = `/.netlify/functions/download?file=${encodeURIComponent(fileName)}&cost=${cost}`;
+        const downloadUrl = `/api/download?file=${encodeURIComponent(fileName)}&cost=${cost}`;
         console.log(`Вызов серверной функции: ${downloadUrl}`);
         const response = await fetch(downloadUrl, {
             method: 'GET',
