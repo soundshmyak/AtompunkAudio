@@ -111,7 +111,10 @@ exports.handler = async (event, context) => {
   try {
     // Обновляем только баланс, сохраняя остальные метаданные
     const updatedMetadata = { ...currentUserData.app_metadata, atom_balance: newBalance };
-    await auth0.updateAppMetadata({ id: userId }, updatedMetadata);
+    await auth0.users.update(
+    { id: userId },
+    { app_metadata: updatedMetadata } // Передаем весь объект метаданных
+);
     console.log(`Списано ${cost} атомов у пользователя ${userId}. Новый баланс: ${newBalance}`);
   } catch (error) {
     console.error(`Ошибка списания атомов у пользователя ${userId}:`, error);
