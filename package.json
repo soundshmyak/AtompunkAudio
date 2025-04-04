@@ -8,9 +8,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "auth0": "^4.21.0",
-    "dotenv": "^16.4.7"
-  }
+    "dotenv": "^16.4.7",
+    "node-fetch": "^3.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soundshmyak/AtompunkAudio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/soundshmyak/AtompunkAudio/issues"
+  },
+  "homepage": "https://github.com/soundshmyak/AtompunkAudio#readme",
+  "description": ""
 }
