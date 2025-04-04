@@ -116,11 +116,11 @@ exports.handler = async (event, context) => {
 
   // 4. Получение баланса
   let currentUserData;
-  let currentBalance;
+  let currentBalance = 0;
   try {
     currentUserData = await auth0.users.get({ id: userId });
-    currentBalance = currentUserData?.app_metadata?.atom_balance ?? 0;
-    console.log(`[handler] Текущий баланс пользователя ${userId}: ${currentBalance} атомов.`);
+  const balanceFromMeta = currentUserData?.data?.app_metadata?.atom_balance;
+    console.log(`[handler] Баланс из app_metadata: ${balanceFromMeta} (тип: ${typeof balanceFromMeta})`);
   } catch (error) {
     console.error(`[handler] Ошибка получения данных пользователя ${userId} из Auth0 API:`, error);
     return { statusCode: 500, body: 'Internal Server Error: Cannot fetch user balance' };
