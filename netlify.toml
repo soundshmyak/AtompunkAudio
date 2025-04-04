@@ -5,20 +5,59 @@
   publish = "_site"
   functions = "netlify/functions"
 
+# Редирект для удобного доступа к API
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  # Важно: force = true может понадобиться, если есть конфликты
+  # force = true
 
-# Заголовки для API функций
+# --- Явные заголовки для OPTIONS (preflight) запросов к API ---
 [[headers]]
   for = "/api/*"
+  # Применяем только к OPTIONS запросам
+  [headers.conditions]
+    Method = ["OPTIONS"]
   [headers.values]
-    # Указываем ТОЛЬКО ваш домен. Для локальной разработки можно временно добавить localhost.
-    Access-Control-Allow-Origin = "https://noise.pw"
-    # Разрешаем GET (для скачивания) и OPTIONS (для preflight CORS запросов)
-    Access-Control-Allow-Methods = "GET, OPTIONS"
-    # Разрешаем необходимые заголовки
+    # Отвечаем на preflight успешно
+    X-Content-Type-Options = "nosniff" # Стандартный заголовок безопасности
+    Referrer-Policy = "strict-origin-when-cross-origin" # Стандартный заголовок
+    # Разрешаем ваш источник
+    Access-Control-Allow-Origin = "https://noise.pw" # <-- ПРОВЕРЬТЕ ТОЧНОСТЬ!
+    # Разрешаем методы
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    # Разрешаем нужные заголовки
     Access-Control-Allow-Headers = "Authorization, Content-Type"
-    # Разрешаем передачу credentials (куки, заголовки авторизации) - может быть полезно
-    # Access-Control-Allow-Credentials = "true"
+    # Разрешаем кеширование preflight
+    Access-Control-Max-Age = "86400"
+    # Отвечаем 204 No Content на OPTIONS
+    # Это не стандартный заголовок, а хак для Netlify, чтобы он вернул 204
+    # Вместо этого можно просто полагаться на статус 200 от редиректа выше
+
+# --- Заголовки для ОСНОВНЫХ (не OPTIONS) запросов к API ---
+[[headers]]
+  for = "/api/*"
+  # Применяем ко всем методам, КРОМЕ OPTIONS
+  [headers.conditions]
+    Method = ["GET", "POST", "PUT", "DELETE"] # Добавьте нужные вам методы
+  [headers.values]
+    # Повторяем Allow-Origin для основного запроса
+    Access-Control-Allow-Origin = "https://noise.pw" # <-- ПРОВЕРЬТЕ ТОЧНОСТЬ!
+    # Можно добавить другие заголовки безопасности, если нужно
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Опционально: Добавить такие же правила для /.netlify/functions/*, если есть прямое обращение
+# [[headers]]
+#  for = "/.netlify/functions/*"
+#  [headers.conditions]
+#    Method = ["OPTIONS"]
+#  [headers.values]
+#    ... (как для /api/* OPTIONS) ...
+# [[headers]]
+#  for = "/.netlify/functions/*"
+#  [headers.conditions]
+#    Method = ["GET", "POST", "PUT", "DELETE"]
+#  [headers.values]
+#    ... (как для /api/* не-OPTIONS) ...
