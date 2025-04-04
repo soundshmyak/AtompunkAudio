@@ -119,7 +119,7 @@ exports.handler = async (event, context) => {
   let currentUserData;
   let currentBalance;
   try {
-    currentUserData = await auth0.getUser({ id: userId });
+    currentUserData = await auth0.users.get({ id: userId });
     currentBalance = currentUserData?.app_metadata?.atom_balance ?? 0;
     console.log(`[handler] Текущий баланс пользователя ${userId}: ${currentBalance} атомов.`);
   } catch (error) {
