@@ -1,19 +1,17 @@
 let auth0Client = null;
 let userAtomBalance = 0;
 // !!! ВАЖНО: УБЕДИТЕСЬ, ЧТО ЭТОТ NAMESPACE ТОЧНО СОВПАДАЕТ С НАСТРОЙКОЙ В ACTION AUTH0 !!!
-// Пример: 'https://your-app-name.com/claims/' или 'http://localhost:4000/' для локальной разработки
-const namespace = 'https://noise.pw/claims/'; // <-- ЗАМЕНИТЕ НА ВАШ NAMESPACE ИЗ AUTH0 ACTION
+const namespace = 'https://noise.pw/claims/'; // <-- ПРОВЕРЬТЕ И ИЗМЕНИТЕ ПРИ НЕОБХОДИМОСТИ
 
-// --- Конфигурация ---
-const auth0Domain = 'dev-bj0zepm87lwu8wov.us.auth0.com'; // <-- ВАШ DOMAIN ИЗ AUTH0
-const auth0ClientId = 'jXNsNNd0J1kRRItKlhmoR7eSz6f47DxA'; // <-- ВАШ CLIENT ID ИЗ AUTH0
-// URL для редиректа ПОСЛЕ логина (должен быть в Allowed Callback URLs в Auth0)
+// --- Конфигурация Auth0 ---
+const auth0Domain = 'dev-bj0zepm87lwu8wov.us.auth0.com';
+const auth0ClientId = 'jXNsNNd0J1kRRItKlhmoR7eSz6f47DxA';
 const auth0CallbackUrl = window.location.origin + '/callback';
-// URL для редиректа ПОСЛЕ выхода (должен быть в Allowed Logout URLs в Auth0)
 const auth0ReturnToUrl = window.location.origin;
-// --------------------
+// --- ВАЖНО: Укажите Identifier вашего API из Auth0, если ваша Netlify функция его проверяет ---
+const auth0ApiAudience = 'https://api.noise.pw/download'; // <-- ЗАМЕНИТЕ НА ВАШ ИЛИ ЗАКОММЕНТИРУЙТЕ, ЕСЛИ НЕ ИСПОЛЬЗУЕТСЯ
 
-// Функция инициализации клиента Auth0
+// --- Функция инициализации клиента Auth0 ---
 const configureClient = async () => {
     try {
         console.log("Auth0: Конфигурирую клиент...");
@@ -21,36 +19,39 @@ const configureClient = async () => {
             domain: auth0Domain,
             clientId: auth0ClientId,
             authorizationParams: {
-                redirect_uri: auth0CallbackUrl
-                // audience: 'YOUR_API_IDENTIFIER', // Раскомментируйте, если ваша Netlify функция - это защищенный API
+                redirect_uri: auth0CallbackUrl,
+                // *** РАСКОММЕНТИРУЙТЕ audience, ЕСЛИ ВАША API-ФУНКЦИЯ ЕГО ПРОВЕРЯЕТ ***
+                 audience: auth0ApiAudience
                 // scope: 'openid profile email offline_access' // Добавьте offline_access если нужны refresh токены
             },
-             cacheLocation: 'localstorage' // Рекомендуется для production для сохранения сессии между вкладками/закрытиями браузера
+             cacheLocation: 'localstorage' // Сохранение сессии между вкладками
         });
         console.log("Auth0: Клиент сконфигурирован.");
     } catch (err) {
         console.error("Auth0: Ошибка конфигурации клиента:", err);
         alert("Не удалось инициализировать систему аутентификации. Пожалуйста, обновите страницу или попробуйте позже.");
+        // Можно добавить более специфичную обработку ошибок, если нужно
     }
 };
 
 // --- Функция для обновления состояния ОДНОЙ кнопки скачивания ---
 const updateSingleDownloadButtonState = async (button) => {
-    if (!button) {
-        console.warn("updateSingleDownloadButtonState: Передан невалидный элемент кнопки.");
+    if (!button || !(button instanceof Element)) { // Добавлена проверка типа
+        // console.warn("updateSingleDownloadButtonState: Передан невалидный элемент кнопки.");
         return;
     }
 
-    // Получаем актуальный статус аутентификации. Используем optional chaining на случай, если клиент еще не готов.
+    // Получаем актуальный статус аутентификации.
+    // Используем auth0Client?.isAuthenticated() для безопасности, если клиент еще не готов
     const isAuthenticated = await auth0Client?.isAuthenticated();
 
     // Сбрасываем предыдущие обработчики и состояние
     button.onclick = null;
     button.disabled = false;
-    button.style.cursor = 'pointer'; // Убедимся, что курсор по умолчанию правильный
+    button.style.cursor = 'pointer';
 
     const cost = parseInt(button.dataset.cost, 10);
-    const soundId = button.dataset.soundId || button.closest('[data-sound-pak-name]')?.dataset?.soundPakName || 'unknown'; // Получаем ID для лога
+    const soundId = button.dataset.soundId || button.closest('[data-sound-pak-name]')?.dataset?.soundPakName || 'unknown';
 
     if (isNaN(cost)) {
         console.warn(`Кнопка для soundId=${soundId} без data-cost или с неверным значением:`, button);
@@ -62,32 +63,31 @@ const updateSingleDownloadButtonState = async (button) => {
 
     if (!auth0Client || !isAuthenticated) {
         // Не залогинен или клиент не готов
-        button.textContent = 'Download'; // Короткий текст
+        button.textContent = 'Download'; // Текст для незалогиненного пользователя
         button.onclick = () => {
             if (auth0Client) {
+                console.log(`Кнопка Download (не залогинен) нажата, редирект на логин/регистрацию.`);
                 auth0Client.loginWithRedirect({
-                    authorizationParams: { screen_hint: 'signup' },
+                    authorizationParams: { screen_hint: 'signup' }, // Предлагаем регистрацию
                     appState: { targetUrl: window.location.pathname + window.location.search + window.location.hash } // Сохраняем текущий URL
                 });
             } else {
                 alert('Ошибка инициализации аутентификации. Попробуйте обновить страницу.');
             }
         };
-        // console.log(`Кнопка обновлена (Download): ID=${soundId}`);
     } else {
         // Залогинен
         // Используем ГЛОБАЛЬНЫЙ userAtomBalance, который обновляется в updateUI
         if (userAtomBalance >= cost) {
             button.textContent = `Download (${cost} a.)`;
             button.onclick = handleDownloadClick; // Назначаем глобальный обработчик скачивания
-            // console.log(`Кнопка обновлена (Download): ID=${soundId}, Balance=${userAtomBalance}, Cost=${cost}`);
         } else {
             button.textContent = `Need ${cost} a.`;
             button.disabled = true;
             button.style.cursor = 'not-allowed';
-            // console.log(`Кнопка обновлена (Need Atoms): ID=${soundId}, Balance=${userAtomBalance}, Cost=${cost}`);
         }
     }
+    // console.log(`Кнопка обновлена: ID=${soundId}, Text=${button.textContent}, Disabled=${button.disabled}`);
 };
 // --- Делаем функцию доступной глобально ---
 window.updateSingleDownloadButtonState = updateSingleDownloadButtonState;
@@ -98,11 +98,9 @@ const updateDownloadButtonsState = async () => {
     // console.log(`updateDownloadButtonsState: Обновление всех кнопок...`);
     const buttons = document.querySelectorAll('.sound-action-button');
     if (buttons.length === 0) {
-        // console.log("updateDownloadButtonsState: Кнопки для обновления не найдены.");
-        return;
+        return; // Нечего обновлять
     }
-    // Используем Promise.all для параллельного (но асинхронного) обновления
-    // Преобразуем NodeList в массив для использования map
+    // Преобразуем NodeList в массив и обновляем каждую кнопку
     await Promise.all(Array.from(buttons).map(button => updateSingleDownloadButtonState(button)));
     // console.log(`updateDownloadButtonsState: Обновление ${buttons.length} кнопок завершено.`);
 };
@@ -110,15 +108,14 @@ const updateDownloadButtonsState = async () => {
 window.updateDownloadButtonsState = updateDownloadButtonsState;
 
 
-// Функция для обновления интерфейса (кнопки, информация о пользователе)
+// Функция для обновления интерфейса шапки и глобального баланса
 const updateUI = async () => {
     if (!auth0Client) {
          console.warn("Auth0: Клиент еще не сконфигурирован для обновления UI.");
-         // Даже если клиент не готов, пытаемся обновить кнопки (покажут Download)
-         await updateDownloadButtonsState();
+         await updateDownloadButtonsState(); // Показать кнопки "Download"
          return;
     }
-    console.log("Auth0: Обновляю UI...");
+    console.log("Auth0: Обновляю UI шапки...");
     try {
         const isAuthenticated = await auth0Client.isAuthenticated();
         const loginBtn = document.getElementById('login-btn');
@@ -138,26 +135,17 @@ const updateUI = async () => {
         if (topUpButton) topUpButton.style.display = isAuthenticated ? 'inline-block' : 'none';
 
         if (isAuthenticated) {
-            // Получаем данные пользователя
-            // Используем { cacheMode: 'off' } чтобы получить самые свежие данные, включая баланс, который мог измениться
-            // Это важно, если Action не всегда мгновенно обновляет токен
-             const user = await auth0Client.getUser({ cacheMode: 'off' }); // Запрос свежих данных
-            // Если не использовать { cacheMode: 'off' }, может потребоваться получить новый ID токен:
-            // const claims = await auth0Client.getIdTokenClaims();
-            // const user = await auth0Client.getUser(); // основные данные из кеша
-            // userAtomBalance = claims[`${namespace}atom_balance`] ?? 0; // баланс из свежих claims
-
+            // Получаем данные пользователя. { cacheMode: 'off' } может помочь получить свежие claim'ы.
+            const user = await auth0Client.getUser({ cacheMode: 'off' });
             console.log('Auth0: Пользователь аутентифицирован:', user);
 
-            if (userAvatar) userAvatar.src = user.picture || 'assets/images/default-avatar.png'; // Fallback avatar
+            if (userAvatar) userAvatar.src = user.picture || 'assets/images/default-avatar.png'; // Fallback
             if (userName) userName.textContent = user.name || user.nickname || user.email || 'User';
 
-            // Получаем баланс из пользовательского claim в ID токене (предпочтительно)
-            // или из app_metadata (может быть менее актуальным, если не обновлять сессию)
+            // Получаем баланс из claim (предпочтительно) или app_metadata
             userAtomBalance = user[`${namespace}atom_balance`] ?? user.app_metadata?.atom_balance ?? 0;
-            // Убедимся, что баланс - это число
-            userAtomBalance = parseInt(userAtomBalance, 10);
-            if (isNaN(userAtomBalance)) userAtomBalance = 0;
+            userAtomBalance = parseInt(userAtomBalance, 10); // Преобразуем в число
+            if (isNaN(userAtomBalance)) userAtomBalance = 0; // Обработка NaN
 
             console.log(`Auth0: Баланс пользователя получен = ${userAtomBalance}`);
 
@@ -165,25 +153,22 @@ const updateUI = async () => {
 
         } else {
             console.log('Auth0: Пользователь НЕ аутентифицирован.');
-            userAtomBalance = 0; // Сбрасываем баланс
+            userAtomBalance = 0; // Сбрасываем глобальный баланс
         }
 
          // *** ВЫЗЫВАЕМ ОБНОВЛЕНИЕ СОСТОЯНИЯ ВСЕХ КНОПОК СКАЧИВАНИЯ ***
-         // Это нужно сделать после того, как isAuthenticated и userAtomBalance установлены
          await updateDownloadButtonsState();
 
     } catch (err) {
         console.error("Auth0: Ошибка при обновлении UI:", err);
-         // В случае ошибки скрываем связанные с пользователем элементы
+         // Скрываем элементы пользователя при ошибке
          if (document.getElementById('login-btn')) document.getElementById('login-btn').style.display = 'block';
          if (document.getElementById('logout-btn')) document.getElementById('logout-btn').style.display = 'none';
          if (document.getElementById('user-profile')) document.getElementById('user-profile').style.display = 'none';
-         if (document.getElementById('user-balance-section')) document.getElementById('user-balance-section').style.display = 'none';
-         if (document.getElementById('top-up-button')) document.getElementById('top-up-button').style.display = 'none';
+         // ... и т.д. для других элементов ...
 
-         userAtomBalance = 0; // Сбрасываем баланс при ошибке
-         // Обновляем кнопки даже при ошибке, чтобы показать "Download"
-         await updateDownloadButtonsState();
+         userAtomBalance = 0; // Сбрасываем баланс
+         await updateDownloadButtonsState(); // Обновляем кнопки в состояние "Download"
     }
 };
 
@@ -197,7 +182,8 @@ const login = async () => {
     console.log("Auth0: Перенаправление на страницу входа...");
     try {
         await auth0Client.loginWithRedirect({
-            appState: { targetUrl: window.location.pathname + window.location.search + window.location.hash } // Сохраняем текущий URL для возврата
+            // Передаем текущий URL, чтобы вернуться сюда после логина
+            appState: { targetUrl: window.location.pathname + window.location.search + window.location.hash }
         });
     } catch (err) {
          console.error("Auth0: Ошибка при попытке входа:", err);
@@ -213,9 +199,11 @@ const logout = () => {
     }
     console.log("Auth0: Выход из системы...");
     try {
+        // Очищаем данные сессии перед выходом (на всякий случай)
+        localStorage.removeItem(`@@auth0spajs@@::${auth0ClientId}::@@user@@`); // Пример ключа кеша пользователя
         auth0Client.logout({
             logoutParams: {
-                returnTo: auth0ReturnToUrl
+                returnTo: auth0ReturnToUrl // Куда вернуться после выхода
             }
         });
     } catch (err) {
@@ -224,19 +212,17 @@ const logout = () => {
     }
 };
 
-// Функция обработки редиректа с Auth0 (запускается на странице /callback)
+// Функция обработки редиректа с Auth0
 const handleRedirectCallback = async () => {
     if (!auth0Client) {
         console.error("Auth0: Клиент не инициализирован для обработки callback.");
-        // Попытаться перенаправить на главную?
-        // window.location.pathname = '/';
+        window.location.replace('/'); // Перенаправляем на главную при ошибке
         return;
     }
     console.log("Auth0: Обработка callback...");
-    let targetUrl = '/'; // URL по умолчанию для перенаправления после успешного входа
+    let targetUrl = '/'; // URL по умолчанию
 
     try {
-        // Парсим параметры из URL перед тем, как Auth0 их удалит
         const urlParams = new URLSearchParams(window.location.search);
         const stateParam = urlParams.get('state');
         const codeParam = urlParams.get('code');
@@ -246,16 +232,20 @@ const handleRedirectCallback = async () => {
         if (errorParam) {
              console.error(`Auth0 Callback Ошибка: ${errorParam} - ${errorDescParam}`);
              alert(`Ошибка входа: ${errorDescParam || errorParam}`);
-             // Не вызываем handleRedirectCallback, просто убираем параметры и обновляем UI
-        } else if (codeParam && stateParam) {
+             // Убираем параметры ошибки из URL и остаемся на текущей странице (или идем на главную)
+             window.history.replaceState({}, document.title, window.location.pathname.replace('/callback', ''));
+             await updateUI(); // Обновить UI, чтобы показать кнопку логина
+             return; // Прерываем дальнейшую обработку
+        }
+
+        if (codeParam && stateParam) {
              console.log("Auth0: Найдены code и state, обрабатываем редирект...");
              const result = await auth0Client.handleRedirectCallback();
              console.log("Auth0: Callback успешно обработан.", result);
-             // Получаем URL, на который пользователь хотел перейти до логина (если он был сохранен)
-             targetUrl = result?.appState?.targetUrl || '/';
+             targetUrl = result?.appState?.targetUrl || '/'; // Получаем URL для возврата
         } else {
-            console.log("Auth0: Параметры code/state/error не найдены в URL, пропускаем handleRedirectCallback.");
-            // Это может быть просто заход на /callback без параметров, не ошибка
+            console.log("Auth0: Параметры code/state не найдены в URL, возможно прямой заход на /callback.");
+            // Ничего не делаем, просто перенаправим на главную
         }
 
     } catch (error) {
@@ -263,15 +253,10 @@ const handleRedirectCallback = async () => {
         alert(`Ошибка обработки входа: ${error.message || error}`);
         // targetUrl останется '/'
     } finally {
-        console.log(`Auth0: Callback обработан (или пропущен). Перенаправление на: ${targetUrl}`);
-        // Убираем параметры code/state/error из URL и перенаправляем пользователя
-        // Использование replaceState безопаснее, чем прямое изменение pathname,
-        // но если мы хотим перенаправить пользователя, лучше использовать window.location.replace
-        // window.history.replaceState({}, document.title, targetUrl);
-        window.location.replace(targetUrl); // Перенаправляем пользователя на нужную страницу
-
-        // Обновление UI и кнопок произойдет на новой странице при ее загрузке (в window.onload)
-        // Нет необходимости вызывать updateUI здесь, так как страница все равно перезагрузится/перенаправится.
+        // Перенаправляем пользователя на целевую страницу ПОСЛЕ обработки callback
+        console.log(`Auth0: Callback обработан. Перенаправление на: ${targetUrl}`);
+        window.location.replace(targetUrl);
+        // Обновление UI произойдет на новой странице при ее загрузке
     }
 };
 
@@ -280,189 +265,120 @@ const handleDownloadClick = async (event) => {
     const button = event.target.closest('button.sound-action-button');
     if (!button) return;
 
-    // Находим родительский элемент с данными (pak_name)
-    // Ищем сначала ближайший .sound-item, затем проверяем данные модалки, если кнопка там
+    // --- Поиск источника данных (как в предыдущем варианте) ---
     let soundDataSourceElement = button.closest('.sound-item[data-sound-pak-name]');
     if (!soundDataSourceElement) {
          const modalContent = button.closest('.modal-content[data-source-item-id]');
          const sourceId = modalContent?.dataset?.sourceItemId;
          if(sourceId) {
              soundDataSourceElement = document.querySelector(`.sound-item[data-sound-pak-name="${sourceId}"]`);
-             // console.log(`Ищем источник данных для модалки по ID: ${sourceId}, найден:`, soundDataSourceElement);
          }
     }
 
-    if (!soundDataSourceElement) {
-        console.error("Не удалось найти источник данных data-sound-pak-name для кнопки:", button);
-        alert('Ошибка: Не удалось получить данные о звуке для скачивания.');
-        await updateSingleDownloadButtonState(button); // Восстановить исходное состояние кнопки
-        return;
-    }
-
+    if (!soundDataSourceElement) { /* ... обработка ошибки ... */ await updateSingleDownloadButtonState(button); return; }
     const fileName = soundDataSourceElement.dataset.soundPakName;
-    const cost = parseInt(button.dataset.cost, 10); // Стоимость берем с самой кнопки
+    const cost = parseInt(button.dataset.cost, 10);
+    if (!fileName) { /* ... обработка ошибки ... */ await updateSingleDownloadButtonState(button); return; }
+    if (isNaN(cost)) { /* ... обработка ошибки ... */ await updateSingleDownloadButtonState(button); return; }
 
-    if (!fileName) { // Дополнительная проверка, хотя data-sound-pak-name искали выше
-        console.error("Атрибут data-sound-pak-name пуст или не найден в элементе:", soundDataSourceElement);
-        alert('Ошибка: Не удалось определить файл для скачивания.');
-        await updateSingleDownloadButtonState(button);
-        return;
-    }
-    if (isNaN(cost)) {
-        console.error("Атрибут data-cost не найден или не является числом на кнопке:", button);
-        alert('Ошибка: Не удалось определить стоимость скачивания.');
-        await updateSingleDownloadButtonState(button);
-        return;
-    }
+    // --- Предварительная проверка баланса на клиенте ---
+    if (userAtomBalance < cost) { /* ... alert, подсветка кнопки "Пополнить" ... */ return; }
 
-    // Проверка баланса на клиенте (предварительная)
-    if (userAtomBalance < cost) {
-        alert(`Недостаточно атомов. Нужно: ${cost}, у вас: ${userAtomBalance}. Пополните баланс!`);
-        const topUpBtn = document.getElementById('top-up-button');
-        if(topUpBtn) {
-            topUpBtn.focus();
-            topUpBtn.style.outline = '2px solid gold'; // Подсветка
-            setTimeout(() => { if(topUpBtn) topUpBtn.style.outline = ''; }, 2500);
-        }
-        // Не меняем состояние кнопки, т.к. баланс не изменился
-        return;
-    }
-
-    // Блокируем кнопку и показываем индикатор загрузки
+    // --- Блокировка кнопки ---
     button.disabled = true;
     button.style.cursor = 'wait';
-    const originalText = button.textContent;
+    const originalText = button.textContent; // Сохраняем текст для восстановления при ошибке
     button.textContent = 'Loading...';
 
     let token;
     try {
+        // --- Получение токена ---
         console.log(`Попытка получить токен для скачивания ${fileName}`);
-        // Получаем токен доступа. Если настроен audience, он будет для API. Иначе - ID токен.
         token = await auth0Client.getTokenSilently({
-             // authorizationParams: {
-             //   audience: 'YOUR_API_IDENTIFIER' // Укажите, если функция защищена как API
-             // },
-             // cacheMode: 'off' // Можно раскомментировать, чтобы точно получить свежий токен (но может быть медленнее)
+             authorizationParams: {
+               // *** РАСКОММЕНТИРУЙТЕ И УКАЖИТЕ ВАШ AUDIENCE, ЕСЛИ НУЖНО ***
+                audience: auth0ApiAudience
+             },
+             // cacheMode: 'off' // Можно использовать для получения свежего токена
         });
-        console.log(`Токен получен.`); // Не выводить сам токен в лог!
+        console.log(`Токен получен.`);
 
     } catch (error) {
+         // --- Обработка ошибки получения токена ---
          console.error('Ошибка получения токена:', error);
          if (error.error === 'login_required' || error.error === 'consent_required') {
-             alert('Требуется повторный вход для выполнения действия. Пожалуйста, войдите снова.');
-             // Можно инициировать логин
-             // await login();
+             alert('Требуется повторный вход для выполнения действия.');
          } else {
-             alert('Ошибка авторизации при подготовке к скачиванию. Попробуйте обновить страницу и повторить.');
+             alert('Ошибка авторизации при подготовке к скачиванию.');
          }
-         // Восстанавливаем кнопку в исходное состояние на основе текущего баланса
-         await updateSingleDownloadButtonState(button);
-         return; // Прерываем выполнение
+         await updateSingleDownloadButtonState(button); // Восстановить кнопку
+         return;
     }
 
     try {
-        // Формируем URL к серверной функции
+        // --- Вызов серверной функции ---
         const downloadUrl = `/api/download?file=${encodeURIComponent(fileName)}&cost=${cost}`;
         console.log(`Вызов серверной функции: ${downloadUrl}`);
-
-        // Выполняем запрос к серверной функции
         const response = await fetch(downloadUrl, {
-            method: 'GET', // Указываем метод явно
-            headers: {
-                'Authorization': `Bearer ${token}` // Отправляем токен
-            },
-             redirect: 'manual' // ОЧЕНЬ ВАЖНО: НЕ следовать за редиректом автоматически
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            redirect: 'manual' // Важно!
         });
-
         console.log(`Ответ сервера: ${response.status} ${response.statusText}`);
 
-        // Анализируем ответ от /api/download
+        // --- Обработка ответа сервера ---
         if (response.status === 302) {
-             // УСПЕХ: Сервер подтвердил операцию и дал редирект на скачивание
-             console.log('Получен редирект 302 (Ожидаемый успех). Обновляем баланс локально и UI.');
+            // УСПЕХ
+            console.log('Получен редирект 302 (Успех). Обновляем баланс и UI.');
+            userAtomBalance -= cost; // Обновляем баланс локально
+            if (document.getElementById('user-atom-balance')) {
+                 document.getElementById('user-atom-balance').textContent = userAtomBalance; // Обновляем шапку
+            }
+            await updateDownloadButtonsState(); // Обновляем все кнопки
 
-             // 1. Обновляем баланс ЛОКАЛЬНО (на клиенте) НЕМЕДЛЕННО
-             userAtomBalance -= cost;
-             // 2. Обновляем отображение баланса в шапке
-             const balanceDisplay = document.getElementById('user-atom-balance');
-             if(balanceDisplay) balanceDisplay.textContent = userAtomBalance;
-
-             // 3. Обновляем состояние ВСЕХ кнопок скачивания, так как баланс изменился
-             // Это важно, чтобы другие кнопки тоже отразили новый баланс
-             await updateDownloadButtonsState(); // Используем общую функцию обновления
-
-             // 4. Получаем URL для скачивания из заголовка Location
-             const redirectUrl = response.headers.get('Location');
-             if (redirectUrl) {
-                 console.log(`Перенаправление браузера на: ${redirectUrl}`);
-                 // Инициируем скачивание файла переходом по URL
-                 window.location.href = redirectUrl;
-                 // После этого страница может перезагрузиться, или просто начнется скачивание.
-                 // Кнопка останется в состоянии, установленном updateDownloadButtonsState
-                 // (вероятно, снова "Download", если баланса хватает на еще)
-             } else {
-                 console.error("Сервер вернул 302, но не предоставил заголовок Location.");
-                 alert("Ошибка скачивания: сервер не указал адрес файла.");
-                 // Восстанавливаем кнопку и другие кнопки на основе (уже уменьшенного) баланса
-                 await updateDownloadButtonsState();
-             }
-
+            const redirectUrl = response.headers.get('Location');
+            if (redirectUrl) {
+                console.log(`Перенаправление браузера на: ${redirectUrl}`);
+                window.location.href = redirectUrl; // Инициируем скачивание
+            } else {
+                 console.error("Сервер вернул 302 без Location.");
+                 alert("Ошибка скачивания: не получен адрес файла.");
+                 await updateDownloadButtonsState(); // Восстановить кнопки
+            }
         } else {
-             // Обработка ОШИБОК от нашей серверной функции (/api/download)
-             let errorMessage = `Ошибка скачивания (${response.status}).`;
-             let errorBody = null;
-             try {
-                 errorBody = await response.text(); // Пытаемся прочитать текст ошибки от сервера
-                 console.error(`Ошибка сервера (${response.status}): ${errorBody}`);
-             } catch (e) {
-                  console.error(`Ошибка сервера (${response.status}), не удалось прочитать тело ответа.`);
-             }
+            // ОШИБКА от /api/download
+            let errorMessage = `Ошибка скачивания (${response.status}).`;
+            let errorBody = await response.text().catch(() => null); // Безопасно читаем тело
+            console.error(`Ошибка сервера (${response.status}): ${errorBody || 'Тело ответа пустое'}`);
 
-             if (response.status === 401) { // Unauthorized
-                 errorMessage = 'Ошибка авторизации на сервере. Попробуйте перезайти.';
-             } else if (response.status === 403) { // Forbidden
-                 errorMessage = errorBody || 'Доступ запрещен сервером.';
-             } else if (response.status === 402) { // Payment Required (нестандартный, но используем для баланса)
-                  errorMessage = errorBody || 'Недостаточно атомов (проверка на сервере). Баланс мог измениться.';
-                  // Стоит обновить UI полностью, чтобы получить актуальный баланс с сервера
-                  await updateUI(); // Перезапросит данные пользователя и обновит всё
-             } else if (response.status === 404) { // Not Found
-                  errorMessage = errorBody || 'Файл не найден на сервере.';
-             } else if (response.status === 400) { // Bad Request
-                  errorMessage = errorBody || `Неверный запрос (${response.status}).`;
-             } else if (response.status >= 500) { // Server Error
-                  errorMessage = errorBody || `Внутренняя ошибка сервера (${response.status}). Попробуйте позже.`;
-             } else if (errorBody) {
-                  errorMessage += ` ${errorBody}`; // Добавляем текст ошибки от сервера
-             }
+            // Формируем сообщение для пользователя
+            if (response.status === 401) errorMessage = 'Ошибка авторизации (токен не принят сервером).';
+            else if (response.status === 403) errorMessage = errorBody || 'Доступ запрещен сервером.';
+            else if (response.status === 402) errorMessage = errorBody || 'Недостаточно атомов (проверка сервера).';
+            else if (response.status === 404) errorMessage = errorBody || 'Файл не найден на сервере.';
+            else if (response.status === 400) errorMessage = errorBody || `Неверный запрос (${response.status}).`;
+            else if (response.status >= 500) errorMessage = `Внутренняя ошибка сервера (${response.status}). Попробуйте позже.`;
+            else if (errorBody) errorMessage += ` ${errorBody}`;
 
-             alert(errorMessage);
-             // Восстанавливаем кнопки на основе текущего (неизменившегося) баланса
-             // Если была ошибка 402 и вызвали updateUI, кнопки обновятся там.
-             // Иначе обновляем здесь.
-             if (response.status !== 402) {
-                 await updateDownloadButtonsState();
-             }
-             // Если кнопка все еще заблокирована после обновления, разблокируем ее явно
-             const currentButtonState = document.querySelector(`[data-sound-id="${button.dataset.soundId}"]`) || button;
-             if (currentButtonState.disabled && currentButtonState.textContent === 'Loading...') {
-                 await updateSingleDownloadButtonState(currentButtonState); // Повторное обновление конкретной кнопки
+            alert(errorMessage);
+            // Восстанавливаем состояние кнопок по текущему (неизмененному) балансу
+            await updateDownloadButtonsState();
+             // Дополнительно проверим конкретно эту кнопку, если она все еще "Loading"
+             if (button.disabled && button.textContent === 'Loading...') {
+                await updateSingleDownloadButtonState(button);
              }
         }
 
     } catch (networkError) {
-        // Ошибка сети или CORS при запросе к /api/download
+        // --- Обработка сетевой ошибки ---
         console.error('Сетевая ошибка при вызове /api/download:', networkError);
-        alert('Сетевая ошибка при попытке скачивания. Проверьте соединение и попробуйте снова.');
-        // Восстанавливаем кнопку и остальные на основе текущего баланса
+        alert('Сетевая ошибка при попытке скачивания. Проверьте соединение.');
+        // Восстанавливаем кнопки
         await updateDownloadButtonsState();
-         // Если кнопка все еще заблокирована после обновления, разблокируем ее явно
-         const currentButtonState = document.querySelector(`[data-sound-id="${button.dataset.soundId}"]`) || button;
-         if (currentButtonState.disabled && currentButtonState.textContent === 'Loading...') {
-             await updateSingleDownloadButtonState(currentButtonState); // Повторное обновление конкретной кнопки
+         if (button.disabled && button.textContent === 'Loading...') {
+            await updateSingleDownloadButtonState(button);
          }
     }
-    // finally не нужен, т.к. состояние кнопки управляется через updateDownloadButtonsState/updateSingleDownloadButtonState
 };
 // --- Конец функции handleDownloadClick ---
 
@@ -473,16 +389,13 @@ window.onload = async () => {
     await configureClient(); // Пытаемся сконфигурировать клиент
 
     if (!auth0Client) {
-         console.error("Auth0: Не удалось инициализировать клиент. Функционал входа/выхода/скачивания недоступен.");
-         // Попытка обновить кнопки в состояние "Download", даже если клиент не создан
-         await updateDownloadButtonsState();
-         // Скрыть элементы, требующие логина
+         console.error("Auth0: Не удалось инициализировать клиент.");
+         // Показываем только кнопку входа, скрываем остальное
+         if (document.getElementById('login-btn')) document.getElementById('login-btn').style.display = 'block';
          if (document.getElementById('logout-btn')) document.getElementById('logout-btn').style.display = 'none';
          if (document.getElementById('user-profile')) document.getElementById('user-profile').style.display = 'none';
-         if (document.getElementById('user-balance-section')) document.getElementById('user-balance-section').style.display = 'none';
-         if (document.getElementById('top-up-button')) document.getElementById('top-up-button').style.display = 'none';
-         if (document.getElementById('login-btn')) document.getElementById('login-btn').style.display = 'block'; // Показать кнопку входа
-         return; // Прерываем дальнейшую инициализацию, связанную с Auth0
+         await updateDownloadButtonsState(); // Установить кнопки в состояние "Download"
+         return; // Прерываем
     }
 
     // Назначаем обработчики на кнопки Вход/Выход/Пополнить
@@ -490,52 +403,25 @@ window.onload = async () => {
     const logoutBtn = document.getElementById('logout-btn');
     const topUpButton = document.getElementById('top-up-button');
 
-    if (loginBtn) {
-        loginBtn.addEventListener('click', login);
-        console.log("Auth0: Обработчик на кнопку ВХОДА добавлен.");
-    } else { console.warn("Auth0: Кнопка #login-btn не найдена."); }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
-         console.log("Auth0: Обработчик на кнопку ВЫХОДА добавлен.");
-    } else { console.warn("Auth0: Кнопка #logout-btn не найдена."); }
-
-    if (topUpButton) {
-        topUpButton.addEventListener('click', () => {
-            // TODO: Реализовать логику пополнения баланса
-            alert('Функция пополнения баланса в разработке.');
-            console.log('Кнопка "Пополнить" нажата (функционал не реализован).');
-        });
-        console.log("Auth0: Обработчик на кнопку 'Пополнить' добавлен.");
-    } else { console.warn("Auth0: Кнопка #top-up-button не найдена."); }
+    if (loginBtn) loginBtn.addEventListener('click', login);
+    else console.warn("Auth0: Кнопка #login-btn не найдена.");
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+    else console.warn("Auth0: Кнопка #logout-btn не найдена.");
+    if (topUpButton) topUpButton.addEventListener('click', () => { alert('Пополнение баланса в разработке.'); });
+    else console.warn("Auth0: Кнопка #top-up-button не найдена.");
 
 
     // Проверяем, является ли текущая страница результатом редиректа с Auth0
     const query = window.location.search;
-    // Редирект может быть и на корень ('/') с параметрами
     const isCallbackQuery = query.includes("code=") && query.includes("state=");
     const isCallbackError = query.includes("error=") && query.includes("state=");
-    // Явная проверка пути '/callback' тоже полезна, если он используется
-    const isCallbackPath = window.location.pathname.includes('/callback');
+    const isCallbackPath = window.location.pathname === '/callback' || window.location.pathname === '/callback/'; // Точное сравнение пути
 
     if (isCallbackQuery || isCallbackError || isCallbackPath) {
-        console.log("Auth0: Обнаружен callback (по пути или параметрам). Запускаем обработку...");
+        console.log("Auth0: Обнаружен callback. Запускаем обработку...");
         await handleRedirectCallback(); // Обработает редирект и перенаправит пользователя
-        // updateUI и updateDownloadButtonsState НЕ вызываются здесь, т.к. страница будет перенаправлена
     } else {
         console.log("Auth0: Не callback. Проверяем сессию и обновляем UI...");
-        // Проверяем наличие сессии без полного редиректа
-        try {
-            // Попытка тихого логина (если есть активная сессия в Auth0)
-            // Это полезно, если пользователь открыл новую вкладку
-            // await auth0Client.getTokenSilently(); // Эта строка может быть излишней, если isAuthenticated() работает надежно
-        } catch (error) {
-            if (error.error !== 'login_required') {
-                console.warn("Auth0: Ошибка при проверке сессии:", error);
-            } else {
-                 console.log("Auth0: Активная сессия не найдена (login_required).");
-            }
-        }
         // Обновляем UI на основе текущего состояния аутентификации
         await updateUI(); // updateDownloadButtonsState вызовется внутри updateUI
     }

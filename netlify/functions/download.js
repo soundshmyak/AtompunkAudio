@@ -3,7 +3,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 const { ManagementClient } = require('auth0');
-const AWS = require('aws-sdk'); // Пример для AWS S3
+const AWS = require('aws-sdk');
 
 // --- Конфигурация клиента JWKS для проверки токенов Auth0 ---
 const client = jwksClient({
@@ -11,12 +11,14 @@ const client = jwksClient({
 });
 
 function getKey(header, callback) {
+  console.log(`[getKey] Попытка получить ключ для kid: ${header.kid}`); // Лог
   client.getSigningKey(header.kid, function(err, key) {
     if (err) {
-        console.error("Ошибка получения ключа JWKS:", err);
+        console.error("[getKey] Ошибка получения ключа JWKS:", err);
         return callback(err);
     }
     const signingKey = key.publicKey || key.rsaPublicKey;
+    console.log(`[getKey] Ключ для kid: ${header.kid} успешно получен.`); // Лог
     callback(null, signingKey);
   });
 }
@@ -25,39 +27,55 @@ function getKey(header, callback) {
 const verifyToken = (bearerToken) => {
   return new Promise((resolve, reject) => {
     if (!bearerToken || !bearerToken.startsWith('Bearer ')) {
+      console.error('[verifyToken] Отсутствует или неверный формат токена Bearer');
       return reject(new Error('Отсутствует или неверный формат токена Bearer'));
     }
-    const token = bearerToken.substring(7); // Убираем "Bearer "
+    const token = bearerToken.substring(7);
+
+    // *** ВАЖНО: Замените 'YOUR_CUSTOM_API_IDENTIFIER' на реальный Identifier вашего API из Auth0 ***
+    // Например: 'https://api.noise.pw/download' или тот, который вы создали
+    const expectedAudience = process.env.AUTH0_AUDIENCE || 'https://api.noise.pw/download';
+    const expectedIssuer = `https://${process.env.AUTH0_DOMAIN}/`;
+
+    console.log(`[verifyToken] Проверка токена (начало): ${token.substring(0,15)}...`);
+    console.log(`[verifyToken] Ожидаемый Issuer: ${expectedIssuer}`);
+    console.log(`[verifyToken] Ожидаемый Audience: ${expectedAudience}`);
 
     jwt.verify(token, getKey, {
-      // audience: 'YOUR_API_IDENTIFIER', // Укажите audience вашего API, если настроен в Auth0
-      issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-      algorithms: ['RS256']
+      audience: expectedAudience,  // <-- ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ AUDIENCE
+      issuer: expectedIssuer,      // <-- Проверяем issuer
+      algorithms: ['RS256']        // <-- Проверяем алгоритм
     }, (err, decoded) => {
       if (err) {
-        console.error("Ошибка верификации токена:", err);
-        return reject(err);
+        // Логируем ошибку подробно
+        console.error("[verifyToken] ОШИБКА ВЕРИФИКАЦИИ:", err.name, err.message);
+        if (err.name === 'JsonWebTokenError') {
+             console.error('[verifyToken] Возможные причины: неверный формат, неверная подпись, неверный audience/issuer.');
+        } else if (err.name === 'TokenExpiredError') {
+             console.error('[verifyToken] Срок действия токена истек.');
+        }
+        return reject(err); // Отклоняем промис с ошибкой
       }
+      console.log('[verifyToken] Токен УСПЕШНО верифицирован. Decoded:', decoded);
       resolve(decoded); // Возвращаем раскодированный токен (payload)
     });
   });
 };
 
 // --- Конфигурация Auth0 Management Client ---
-// Нужен для чтения и ЗАПИСИ app_metadata
 const auth0 = new ManagementClient({
   domain: process.env.AUTH0_DOMAIN,
-  clientId: process.env.AUTH0_M2M_CLIENT_ID, // Используем M2M ключи
+  clientId: process.env.AUTH0_M2M_CLIENT_ID,
   clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET,
-  scope: "read:users update:users read:users_app_metadata update:users_app_metadata", // Расширенные права!
+  scope: "read:users update:users read:users_app_metadata update:users_app_metadata",
 });
 
-// --- Конфигурация AWS S3 (Пример) ---
+// --- Конфигурация AWS S3 ---
 const s3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     region: process.env.AWS_REGION,
-    signatureVersion: 'v4', // Важно для presigned URLs
+    signatureVersion: 'v4',
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
@@ -65,85 +83,91 @@ const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 exports.handler = async (event, context) => {
   // 1. Проверка метода GET
   if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method Not Allowed' }; // Более корректный статус для "метод не разрешен"
+    return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // 2. Получение имени файла и СТОИМОСТИ из запроса
+  // 2. Получение параметров
   const fileName = event.queryStringParameters.file;
-  const costParam = event.queryStringParameters.cost; // Клиент должен передать стоимость!
+  const costParam = event.queryStringParameters.cost;
   const cost = parseInt(costParam, 10);
 
   if (!fileName || isNaN(cost) || cost < 0) {
-    return { statusCode: 400, body: 'Bad Request: Missing or invalid "file" or "cost" query parameter' };
+    return { statusCode: 400, body: 'Bad Request: Missing or invalid "file" or "cost"' };
   }
 
-  // 3. Проверка токена Auth0
+  // 3. Проверка токена
   let decodedToken;
   try {
-    decodedToken = await verifyToken(event.headers.authorization);
+    // Получаем заголовок Authorization
+    const bearerToken = event.headers.authorization;
+    console.log(`[handler] Получен заголовок Authorization: ${bearerToken ? 'Да' : 'Нет'}`);
+    decodedToken = await verifyToken(bearerToken);
+    // Если верификация прошла, токен валидный
+    console.log(`[handler] Токен верифицирован для пользователя: ${decodedToken.sub}`);
   } catch (error) {
-    return { statusCode: 401, body: 'Unauthorized: Invalid or missing token' };
+    console.error('[handler] Ошибка проверки токена:', error.message);
+    // Возвращаем 401, если токен не прошел проверку
+    return { statusCode: 401, body: `Unauthorized: ${error.message}` };
   }
 
-  const userId = decodedToken.sub;
-  console.log(`Запрос на скачивание файла ${fileName} (стоимость ${cost}) от пользователя ${userId}`);
+  // ---- С этого момента токен валидный ----
 
-  // 4. Получение ТЕКУЩЕГО баланса пользователя из Auth0
+  const userId = decodedToken.sub;
+  console.log(`[handler] Запрос на скачивание файла ${fileName} (стоимость ${cost}) от пользователя ${userId}`);
+
+  // 4. Получение баланса
   let currentUserData;
   let currentBalance;
   try {
     currentUserData = await auth0.getUser({ id: userId });
-    currentBalance = currentUserData?.app_metadata?.atom_balance ?? 0; // Если баланса нет, считаем 0
-    console.log(`Текущий баланс пользователя ${userId}: ${currentBalance} атомов.`);
+    currentBalance = currentUserData?.app_metadata?.atom_balance ?? 0;
+    console.log(`[handler] Текущий баланс пользователя ${userId}: ${currentBalance} атомов.`);
   } catch (error) {
-    console.error(`Ошибка получения данных пользователя ${userId} из Auth0 API:`, error);
+    console.error(`[handler] Ошибка получения данных пользователя ${userId} из Auth0 API:`, error);
     return { statusCode: 500, body: 'Internal Server Error: Cannot fetch user balance' };
   }
 
   // 5. Проверка баланса
   if (currentBalance < cost) {
-    console.warn(`Недостаточно атомов у пользователя ${userId} (нужно ${cost}, есть ${currentBalance}) для файла ${fileName}.`);
-    return { statusCode: 402, body: 'Payment Required: Insufficient atoms' }; // 402 Payment Required - подходящий статус
+    console.warn(`[handler] Недостаточно атомов у пользователя ${userId} (нужно ${cost}, есть ${currentBalance}) для файла ${fileName}.`);
+    return { statusCode: 402, body: 'Payment Required: Insufficient atoms' };
   }
 
-  // 6. СПИСАНИЕ АТОМОВ (перед генерацией ссылки!)
+  // 6. Списание атомов
   const newBalance = currentBalance - cost;
   try {
-    // Обновляем только баланс, сохраняя остальные метаданные
     const updatedMetadata = { ...currentUserData.app_metadata, atom_balance: newBalance };
+    // Используем правильный метод users.update
     await auth0.users.update(
-    { id: userId },
-    { app_metadata: updatedMetadata } // Передаем весь объект метаданных
-);
-    console.log(`Списано ${cost} атомов у пользователя ${userId}. Новый баланс: ${newBalance}`);
+        { id: userId },
+        { app_metadata: updatedMetadata }
+    );
+    console.log(`[handler] Списано ${cost} атомов у пользователя ${userId}. Новый баланс: ${newBalance}`);
   } catch (error) {
-    console.error(`Ошибка списания атомов у пользователя ${userId}:`, error);
-    // Важно: НЕ выдаем ссылку, если списание не удалось!
+    console.error(`[handler] Ошибка списания атомов у пользователя ${userId}:`, error);
     return { statusCode: 500, body: 'Internal Server Error: Failed to deduct atoms' };
   }
 
-  // 7. Генерация Pre-signed URL для S3 (как раньше, но адаптируем путь к файлу)
+  // 7. Генерация Pre-signed URL для S3
   const params = {
     Bucket: BUCKET_NAME,
-    Key: `sounds/${fileName}`, // Путь к файлу в S3 (предполагаем, что файлы в папке "sounds/")
-    Expires: 60 * 5, // Ссылка действительна 5 минут
-    ResponseContentDisposition: `attachment; filename="${fileName}"` // Чтобы браузер предложил скачать
+    Key: `sounds/${fileName}`, // Убедитесь, что путь верный
+    Expires: 300, // 5 минут
+    ResponseContentDisposition: `attachment; filename="${fileName}"`
   };
   try {
     const signedUrl = await s3.getSignedUrlPromise('getObject', params);
-    console.log(`Сгенерирована ссылка для ${userId} на файл ${fileName}`);
-    // 8. Перенаправление на скачивание
+    console.log(`[handler] Сгенерирована ссылка для ${userId} на файл ${fileName}`);
+
+    // 8. Возврат 302 редиректа
     return {
       statusCode: 302,
       headers: { Location: signedUrl },
       body: '',
     };
   } catch (error) {
-    console.error(`Ошибка генерации pre-signed URL для файла ${fileName}:`, error);
-     // Важно: Что делать с уже списанными атомами, если S3 не сработал?
-     // В данном примере, если ошибка произошла *после* списания, атомы уже списаны.
-     // В реальном приложении нужно продумать компенсацию (например, отдельный процесс "возврата" атомов).
-     // Пока что просто логируем ошибку.
-    return { statusCode: 500, body: 'Internal Server Error: Could not generate download link after deduction' };
+    console.error(`[handler] Ошибка генерации pre-signed URL для файла ${fileName}:`, error);
+    // Логируем ошибку, но атомы уже списаны.
+    return { statusCode: 500, body: 'Internal Server Error: Could not generate download link' };
   }
-}; // Конец exports.handler
+};
