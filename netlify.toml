@@ -1,10 +1,24 @@
-[build]
-  command = "bundle exec jekyll build" # Как собирать ваш сайт
-  publish = "_site"                   # Куда складывать готовый сайт
-  functions = "netlify/functions"     # Где лежат серверные функции
+# В файле netlify.toml
 
-# Эта часть необязательна, но делает адрес функции красивее
+[build]
+  command = "bundle exec jekyll build"
+  publish = "_site"
+  functions = "netlify/functions"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+# Заголовки для API функций
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    # Указываем ТОЛЬКО ваш домен. Для локальной разработки можно временно добавить localhost.
+    Access-Control-Allow-Origin = "https://noise.pw"
+    # Разрешаем GET (для скачивания) и OPTIONS (для preflight CORS запросов)
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    # Разрешаем необходимые заголовки
+    Access-Control-Allow-Headers = "Authorization, Content-Type"
+    # Разрешаем передачу credentials (куки, заголовки авторизации) - может быть полезно
+    # Access-Control-Allow-Credentials = "true"
