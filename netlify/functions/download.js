@@ -1,4 +1,3 @@
-// netlify/functions/download.js
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
