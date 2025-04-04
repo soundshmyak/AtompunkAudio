@@ -1,3 +1,4 @@
+// netlify/functions/download.js
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
@@ -142,4 +143,4 @@ exports.handler = async (event, context) => {
      // Пока что просто логируем ошибку.
     return { statusCode: 500, body: 'Internal Server Error: Could not generate download link after deduction' };
   }
-};
+}; // Конец exports.handler
