@@ -61,9 +61,17 @@ const auth0 = new ManagementClient({
   scope: "read:users update:users read:users_app_metadata update:users_app_metadata",
 });
 
-// --- Конфигурация AWS S3 (как раньше) ---
-const s3 = new AWS.S3({ /* ... */ });
-const BUCKET_NAME = process.env.S3_BUCKET_NAME;
+// --- *** ИЗМЕНЕННАЯ КОНФИГУРАЦИЯ ДЛЯ YANDEX OBJECT STORAGE *** ---
+const s3 = new AWS.S3({
+    endpoint: process.env.YANDEX_ENDPOINT || 'https://storage.yandexcloud.net', // Эндпоинт Яндекса
+    accessKeyId: process.env.YANDEX_ACCESS_KEY_ID,        // Ключ Яндекса
+    secretAccessKey: process.env.YANDEX_SECRET_ACCESS_KEY, // Секрет Яндекса
+    region: process.env.YANDEX_REGION || 'ru-central1',      // Регион Яндекса
+    s3ForcePathStyle: true, // Рекомендуется для совместимости с S3-совместимыми хранилищами
+    signatureVersion: 'v4', // Оставляем v4
+});
+const BUCKET_NAME = process.env.YANDEX_BUCKET_NAME; // Используем переменную для Яндекса
+// --- *** КОНЕЦ ИЗМЕНЕНИЙ КОНФИГУРАЦИИ ХРАНИЛИЩА *** ---
 
 // --- Основной обработчик Netlify Function ---
 exports.handler = async (event, context) => {
@@ -144,15 +152,21 @@ exports.handler = async (event, context) => {
   }
 
   // 7. Генерация Pre-signed URL для S3
+  if (!BUCKET_NAME) {
+       console.error("[handler] Ошибка: Имя бакета Yandex не установлено в переменных окружения (YANDEX_BUCKET_NAME).");
+       return { statusCode: 500, body: 'Internal Server Error: Storage bucket not configured.' };
+  }
   const params = {
-    Bucket: BUCKET_NAME,
-    Key: `sounds/${fileName}`, // Убедитесь, что путь верный
+    Bucket: BUCKET_NAME, // Используем имя бакета Яндекса
+    Key: `sounds/${fileName}`, // Путь к файлу в бакете Яндекса
     Expires: 300, // 5 минут
     ResponseContentDisposition: `attachment; filename="${fileName}"`
   };
   try {
+    // Используем тот же метод getSignedUrlPromise, т.к. API совместим
     const signedUrl = await s3.getSignedUrlPromise('getObject', params);
-    console.log(`[handler] Сгенерирована ссылка для ${userId} на файл ${fileName}`);
+    console.log(`[handler] Сгенерирована Yandex ссылка для ${userId} на ${fileName}`);
+
 
     // 8. Возврат 302 редиректа
     return {
