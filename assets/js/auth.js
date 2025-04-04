@@ -1,6 +1,6 @@
 let auth0Client = null;
 let userAtomBalance = 0;
-// !!! ВАЖНО: УБЕДИТЕСЬ, ЧТО ЭТОТ NAMESPACE ТОЧНО СОВПАДАЕТ С НАСТРОЙКОЙ В ACTION AUTH0 !!!
+// !!! ВАЖНО: УБЕДИТЕСЬ, ЧТО ЭТОТ NAMESPACE ТОЧНО СОВПАДАЕТ С НАСТРОЙКОЙ В ACTION AUTH0 !!
 const namespace = 'https://noise.pw/claims/'; // <-- ПРОВЕРЬТЕ И ИЗМЕНИТЕ ПРИ НЕОБХОДИМОСТИ
 
 // --- Конфигурация Auth0 ---
